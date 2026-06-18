@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import FastAPI, Response, status, HTTPException, Header
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
@@ -29,7 +29,7 @@ users = [
         "place": "Vietnam",
         "tel": "0987654321",
         "rank" : "Diamond",
-        "point" : 1500
+        "points" : 1500
     },
     {
         "id" : 2,
@@ -40,7 +40,7 @@ users = [
         "place": "Vietnam",
         "tel": "0981696125",
         "rank" : "Bronze",
-        "point" : 15
+        "points" : 15
     }
 ]
 
@@ -64,7 +64,7 @@ class Users(BaseModel):
     place: str = None
     tel: str = None
     rank: str = None
-    point: str = None
+    points: str = None
 
 class EditUserInfo(BaseModel):
     name: str = None
@@ -73,7 +73,7 @@ class EditUserInfo(BaseModel):
     place: str = None
     tel: str = None
     rank: str = None
-    point: str = None
+    points: str = None
     
 class CreateItems(BaseModel):
     name: str
@@ -119,12 +119,13 @@ def login(login_request: LoginRequest):
         
         return {
             "message": "Đăng nhập thành công từ Firebase Auth!",
+            "access_token": auth.create_custom_token(user_record.uid).decode("utf-8"),
             "user": {
                 "uid": user_record.uid,
                 "email": user_record.email,
-                "name": target_user["name"] if target_user else user_record.display_name,
-                "rank": target_user["rank"] if target_user else "Silver",
-                "point": target_user["point"] if target_user else 0
+                "username": target_user.get("name", user_record.display_name) if target_user else (user_record.display_name or "Guest"),
+                "rank": target_user.get("rank", "Silver") if target_user else "Silver",
+                "points": target_user.get("points", 0) if target_user else 0
             }
         }
         
@@ -141,42 +142,60 @@ def login(login_request: LoginRequest):
     
 @app.post("/api/signup", status_code=status.HTTP_201_CREATED)
 def signup(signup_request: SignupRequest):
-    if not signup_request.username or not signup_request.password:
+    if not signup_request.email or not signup_request.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Không được bỏ trống phần này!"
         )
         
-    for user in users:
-        if signup_request.username == user["username"]:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, 
-                detail="Tên đăng nhập đã bị trùng!"
-            )
-            
-    new_user = {
-        "id": len(users) + 1,
-        "username": signup_request.username,
-        "password": signup_request.password,
-        "name": None,
-        "dob": None,
-        "email": signup_request.email,
-        "place": None,
-        "tel": signup_request.tel,
-        "rank": "Silver", 
-        "point": 0    
-    }
-    
-    users.append(new_user)
-    return {
-        "message": "Đăng ký tài khoản thành công!",
-        "user": {
-            "id": new_user["id"],
-            "username": new_user["username"],
-            "rank": new_user["rank"],
-            "point": new_user["point"]
+    try:
+        user_record = auth.create_user(
+            email=signup_request.email,
+            password=signup_request.password,
+            display_name=signup_request.username
+        )
+        
+        new_user_data = {
+            "uid": user_record.uid,
+            "username": signup_request.username,
+            "email": signup_request.email,
+            "tel": signup_request.tel,
+            "name": None,
+            "dob": None,
+            "place": None,
+            "rank": "Silver", 
+            "point": 0  
         }
-    }
+        
+        db.collection("users").document(user_record.uid).set(new_user_data)
+        
+        new_user_data["id"] = len(users) + 1
+        new_user_data["password"] = signup_request.password 
+        users.append(new_user_data)
+        
+        return {
+            "message": "Đăng ký tài khoản và lưu vào Database thành công!",
+            "user": {
+                "uid": user_record.uid,
+                "username": new_user_data["username"],
+                "email": new_user_data["email"],
+                "rank": new_user_data["rank"],
+                "point": new_user_data["point"]
+            }
+        }
+        
+    except auth.EmailAlreadyExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Địa chỉ Email này đã được đăng ký bởi một tài khoản khác!"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi hệ thống: {str(e)}"
+        )
+        
+        
 
 @app.post("/api/create_items", status_code=status.HTTP_201_CREATED)
 def create_item(item: CreateItems):
