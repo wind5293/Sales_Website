@@ -1,19 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const Navbar = ({ onNavigate, username, onLogout }) => {
+const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const [searchQuery, setSearchQuery] = useState('');
+
     const [showPopup, setShowPopup] = useState(false);
-    const popupRef = useRef(null);
+    const [showCategory, setShowCategory] = useState(false); 
+    const [showLocation, setShowLocation] = useState(false);
+
+    const [selectedLocation, setSelectedLocation] = useState('Hồ Chí Minh');
+
+    const popupRef = useRef(null); 
+    const categoryRef = useRef(null);
+    const locationRef = useRef(null);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (popupRef.current && !popupRef.current.contains(event.target)) {
+            if (popupRef.current && !popupRef.current.contains(event.target)) 
                 setShowPopup(false);
-            }
+            if (categoryRef.current && !categoryRef.current.contains(event.target)) 
+                setShowCategory(false);
+            if (locationRef.current && !locationRef.current.contains(event.target)) 
+                setShowLocation(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const locations = [
+        "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Hải Phòng",
+        "Cần Thơ", "Bình Dương", "Đồng Nai", "Thừa Thiên Huế", "Khánh Hòa"
+    ];
+
+    const categories = [
+        { icon: "fas fa-mobile-alt", name: "Điện thoại" },
+        { icon: "fas fa-laptop", name: "Laptop" },
+        { icon: "fas fa-tablet-alt", name: "Máy tính bảng" },
+        { icon: "fas fa-headphones", name: "Âm thanh" },
+        { icon: "far fa-clock", name: "Đồng hồ thông minh" },
+        { icon: "fas fa-home", name: "Nhà thông minh" },
+        { icon: "fas fa-gamepad", name: "Phụ kiện Gaming" }
+    ];
 
     const handleHomeClick = () => {
         if (onNavigate) onNavigate('home');
@@ -25,6 +51,8 @@ const Navbar = ({ onNavigate, username, onLogout }) => {
         } else {
             // if (onNavigate) onNavigate('profile');
             setShowPopup(!showPopup);
+            setShowCategory(false);
+            setShowLocation(false);
         }
     };
 
@@ -35,7 +63,25 @@ const Navbar = ({ onNavigate, username, onLogout }) => {
         localStorage.removeItem('user_data');
 
         setShowPopup(false);
-        if (onLogout) onLogout();
+        if (onLogout) onLogout(); 
+        if (onNavigate) onNavigate('home');
+    };
+
+    const handleSearchKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            // Kiểm tra nếu người dùng có nhập chữ mới cho tìm kiếm
+            if (searchQuery.trim() !== '') {
+                if (onSearch) onSearch(searchQuery);
+                // Tùy chọn: Xóa ô tìm kiếm sau khi enter
+                // setSearchQuery(''); 
+            }
+        }
+    };
+
+    const handleCartClick = () => {
+        if (onCartClick) {
+            onCartClick();
+        }
     };
 
     return (
@@ -77,18 +123,76 @@ const Navbar = ({ onNavigate, username, onLogout }) => {
                     </div>
 
                     {/* Nút Danh mục */}
-                    <button className="hidden lg:flex bg-white/15 hover:bg-white/25 text-white px-3 py-2 rounded-md flex-row items-center gap-2 transition-colors shrink-0">
-                        <i className="fas fa-th-large text-lg"></i>
-                        <span className="text-sm">Danh mục</span>
-                        <i className="fas fa-chevron-down text-[10px]"></i>
-                    </button>
+                    <div className="relative hidden lg:block" ref={categoryRef}>
+                        <button
+                            onClick={() => {
+                                setShowCategory(!showCategory);
+                                setShowLocation(false);
+                                setShowPopup(false);
+                            }}
+                            className="bg-white/15 hover:bg-white/25 text-white px-3 py-2 rounded-md flex flex-row items-center gap-2 transition-colors shrink-0"
+                        >
+                            <i className="fas fa-th-large text-lg"></i>
+                            <span className="text-sm">Danh mục</span>
+                            <i className={`fas fa-chevron-down text-[10px] transition-transform ${showCategory ? 'rotate-180' : ''}`}></i>
+                        </button>
+
+                        {/* Cửa sổ Popup Danh mục */}
+                        {showCategory && (
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-md shadow-xl py-2 z-50 border border-gray-100">
+                                {categories.map((cat, index) => (
+                                    <div
+                                        key={index}
+                                        className="px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-3"
+                                    >
+                                        <i className={`${cat.icon} w-5 text-center text-gray-400`}></i>
+                                        <span className="font-medium">{cat.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Nút Vị trí */}
-                    <button className="hidden lg:flex bg-white/15 hover:bg-white/25 text-white px-3 py-2 rounded-md flex-row items-center gap-2 transition-colors shrink-0">
-                        <i className="fas fa-map-marker-alt text-lg"></i>
-                        <span className="text-sm">Hồ Chí Minh</span>
-                        <i className="fas fa-chevron-down text-[10px]"></i>
-                    </button>
+                    <div className="relative hidden lg:block" ref={locationRef}>
+                        <button
+                            onClick={() => {
+                                setShowLocation(!showLocation);
+                                setShowCategory(false);
+                                setShowPopup(false);
+                            }}
+                            className="bg-white/15 hover:bg-white/25 text-white px-3 py-2 rounded-md flex flex-row items-center gap-2 transition-colors shrink-0"
+                        >
+                            <i className="fas fa-map-marker-alt text-lg"></i>
+                            <span className="text-sm whitespace-nowrap">{selectedLocation}</span>
+                            <i className={`fas fa-chevron-down text-[10px] transition-transform ${showLocation ? 'rotate-180' : ''}`}></i>
+                        </button>
+
+                        {/* Cửa sổ Popup Địa điểm */}
+                        {showLocation && (
+                            <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-md shadow-xl py-2 z-50 border border-gray-100 max-h-64 overflow-y-auto">
+                                <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                    Chọn tỉnh/thành phố
+                                </div>
+                                {locations.map((loc, index) => (
+                                    <div
+                                        key={index}
+                                        onClick={() => {
+                                            setSelectedLocation(loc);
+                                            setShowLocation(false); // Chọn xong tự đóng popup
+                                        }}
+                                        className={`px-4 py-2 text-sm cursor-pointer transition-colors ${selectedLocation === loc
+                                                ? 'bg-amber-100 text-amber-700 font-semibold'
+                                                : 'text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {loc}
+                                        {selectedLocation === loc && <i className="fas fa-check float-right mt-1"></i>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Thanh tìm kiếm trung tâm */}
                     <div className="flex-1 max-w-[500px] relative shrink w-full">
@@ -100,6 +204,7 @@ const Navbar = ({ onNavigate, username, onLogout }) => {
                             placeholder="Tìm kiếm sản phẩm..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
                             className="w-full pl-10 pr-4 py-2 bg-white rounded-md focus:outline-none text-sm text-gray-800 placeholder-gray-400"
                         />
                     </div>
@@ -108,7 +213,9 @@ const Navbar = ({ onNavigate, username, onLogout }) => {
                     <div className="flex items-center gap-4 text-white shrink-0 ml-2">
 
                         {/* Giỏ hàng */}
-                        <div className="cursor-pointer hover:text-white/80 transition-colors flex items-center gap-2">
+                        <div 
+                        onClick={handleCartClick}
+                        className="cursor-pointer hover:text-white/80 transition-colors flex items-center gap-2">
                             <span className="hidden md:block text-sm">Giỏ hàng</span>
                             <div className="relative">
                                 <i className="fas fa-shopping-cart text-2xl"></i>
