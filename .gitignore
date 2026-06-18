@@ -1,0 +1,11 @@
+# Bỏ qua thư mục node_modules của frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Bỏ qua các file Python ở ngoài nếu cần
+__pycache__/
+*.pyc
+
+# Bỏ qua file chứa key bảo mật
+firebase-key.json
