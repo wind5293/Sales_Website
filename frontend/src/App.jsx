@@ -3,10 +3,14 @@ import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
+import SearchPage from "./pages/SearchPage";
+import Cart from "./pages/Cart";
 
 export default function App() {
     const [currentPage, setCurrentPage] = useState('home'); 
     const [user, setUser] = useState('Welcome');
+
+    const [searchKeyword, setSearchKeyword] = useState('');
 
     const checkLoginStatus = () => {
         const token = localStorage.getItem('auth_token');
@@ -37,17 +41,30 @@ export default function App() {
         setCurrentPage('home');
     };
 
+    const handleSearchSubmit = (keyword) => {
+        setSearchKeyword(keyword);
+        setCurrentPage('search');
+    };
+
+    const handleCartClick = () => {
+        setCurrentPage('cart');
+    }
+
     return (
         <div>
             <Navbar 
                 onNavigate={handleNavigate} 
                 username={user} 
                 onLogout={handleLogoutSuccess} 
+                onSearch={handleSearchSubmit}
+                onCartClick={handleCartClick}
             />
 
             {currentPage === 'home' && <Homepage />}
             {currentPage === 'login' && <Login onNavigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />}
             {currentPage === 'signup' && <Signup onNavigate={handleNavigate} />}
+            {currentPage === 'search' && <SearchPage keyword={searchKeyword} />}
+            {currentPage === 'cart' && <Cart />}
         </div>
     );
 }

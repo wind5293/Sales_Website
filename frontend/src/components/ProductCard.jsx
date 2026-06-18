@@ -2,7 +2,7 @@ import React from 'react';
 
 const ProductCard = ({ image, category, title, price, oldPrice }) => {
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 flex flex-col justify-between group cursor-pointer">
+        <div className="bg-white border border-slate-200 rounded-md p-4 hover:shadow-md transition-all duration-300 flex flex-col justify-between group cursor-pointer">
             {/* Khối hiển thị ảnh sản phẩm tập trung */}
             <div className="h-44 w-full flex items-center justify-center overflow-hidden mb-4 bg-slate-50 rounded-lg p-2 relative">
                 <img
@@ -19,13 +19,13 @@ const ProductCard = ({ image, category, title, price, oldPrice }) => {
                     {title}
                 </h3>
                 <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold text-red-500">${price}</span>
+                    <span className="text-lg font-bold text-yellow-500">${price}</span>
                     {oldPrice && <span className="text-xs text-slate-400 line-through">${oldPrice}</span>}
                 </div>
             </div>
 
             {/* Button hành động */}
-            <button className="mt-4 w-full bg-slate-100 hover:bg-[#fbbf24] text-slate-800 font-semibold py-2.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-2">
+            <button className="mt-4 w-full bg-slate-100 hover:bg-[#fbbf24] text-slate-800 font-semibold py-2.5 rounded-md text-xs transition-colors flex items-center justify-center gap-2">
                 <i className="fas fa-shopping-basket"></i> Thêm vào giỏ
             </button>
         </div>

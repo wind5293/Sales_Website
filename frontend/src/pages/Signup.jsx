@@ -46,7 +46,7 @@ export default function Signup({ onNavigate }) {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4 sm:px-6 py-10">
+        <div className="min-h-screen w-full flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1593642632823-8f785ba67e45?q=80&w=1200')] bg-cover bg-center bg-no-repeat px-4 sm:px-6 py-10">
 
             {/* Hộp thoại đăng ký: */}
             <div className="w-full max-w-[450px] bg-white p-8 sm:p-10 border border-gray-100">
