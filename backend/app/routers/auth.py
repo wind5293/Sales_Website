@@ -1,3 +1,6 @@
+import os
+import httpx
+
 from fastapi import APIRouter, HTTPException, status, Header
 from firebase_admin import auth
 from app.models.schemas import LoginRequest, SignupRequest
@@ -6,6 +9,13 @@ from app.services.firebase import get_db
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 db = get_db()
 
+FIREBASE_WEB_API_KEY = os.environ["FIREBASE_WEB_API_KEY"]
+FIREBASE_SIGN_IN_URL = (
+    f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
+    f"?key={FIREBASE_WEB_API_KEY}"
+)
+
+_GENERIC_LOGIN_ERROR = "Email hoặc mật khẩu không đúng"
 
 def verify_token(authorization: str = Header(...)) -> dict:
     """Xác thực Firebase ID Token từ header Authorization: Bearer <token>"""
@@ -17,37 +27,59 @@ def verify_token(authorization: str = Header(...)) -> dict:
     except Exception:
         raise HTTPException(status_code=401, detail="Token hết hạn hoặc không hợp lệ")
 
-
 @router.post("/login", status_code=status.HTTP_200_OK)
 def login(body: LoginRequest):
     """
-    Đăng nhập: xác minh email tồn tại trên Firebase Auth.
-    Việc kiểm tra password thực sự do Firebase Client SDK xử lý ở frontend,
-    backend chỉ trả về thông tin user từ Firestore.
+    Đăng nhập: verify email + password thật sự qua Firebase Auth REST API
+    (Admin SDK không có hàm verify password, nên phải gọi REST API).
     """
     try:
-        user_record = auth.get_user_by_email(body.email)
-
+        resp = httpx.post(
+            FIREBASE_SIGN_IN_URL,
+            json={
+                "email": body.email,
+                "password": body.password,
+                "returnSecureToken": True,
+            },
+            timeout=10,
+        )
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Không thể kết nối tới dịch vụ xác thực, vui lòng thử lại"
+        )
+ 
+    if resp.status_code != 200:
+        error_message = resp.json().get("error", {}).get("message", "")
+        if error_message == "USER_DISABLED":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tài khoản đã bị khóa"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_GENERIC_LOGIN_ERROR
+        )
+ 
+    firebase_data = resp.json()
+    uid = firebase_data["localId"]
+ 
+    try:
         # Lấy thêm thông tin từ Firestore
-        user_doc = db.collection("users").document(user_record.uid).get()
+        user_doc = db.collection("users").document(uid).get()
         user_data = user_doc.to_dict() if user_doc.exists else {}
-
+ 
         return {
             "message": "Đăng nhập thành công",
+            "idToken": firebase_data["idToken"],
             "user": {
-                "uid": user_record.uid,
-                "email": user_record.email,
-                "username": user_data.get("username", user_record.display_name or ""),
+                "uid": uid,
+                "email": firebase_data.get("email", body.email),
+                "username": user_data.get("username", ""),
                 "rank": user_data.get("rank", "Silver"),
                 "points": user_data.get("points", 0),
             }
         }
-
-    except auth.UserNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email này chưa được đăng ký"
-        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

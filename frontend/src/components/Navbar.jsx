@@ -1,19 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+
+const CATEGORY_ICONS = {
+    'iPhone': 'fas fa-mobile-alt',
+    'iPad': 'fas fa-tablet-alt',
+    'MacBook': 'fas fa-laptop',
+    'Apple Watch': 'far fa-clock',
+    'AirPods': 'fas fa-headphones',
+};
 
 const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState('');
 
+    const [searchQuery, setSearchQuery] = useState('');
     const [showPopup, setShowPopup] = useState(false);
     const [showCategory, setShowCategory] = useState(false); 
     const [showLocation, setShowLocation] = useState(false);
-
     const [selectedLocation, setSelectedLocation] = useState('Hồ Chí Minh');
+    const [categories, setCategories] = useState([]);
 
     const popupRef = useRef(null); 
     const categoryRef = useRef(null);
     const locationRef = useRef(null);
+
+    useEffect(() => {
+        axios.get('http://127.0.0.1:8000/api/products/category/all')
+            .then(res => setCategories(res.data.categories || []))
+            .catch(() => { });
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -33,18 +48,13 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
         "Cần Thơ", "Bình Dương", "Đồng Nai", "Thừa Thiên Huế", "Khánh Hòa"
     ];
 
-    const categories = [
-        { icon: "fas fa-mobile-alt", name: "Điện thoại" },
-        { icon: "fas fa-laptop", name: "Laptop" },
-        { icon: "fas fa-tablet-alt", name: "Máy tính bảng" },
-        { icon: "fas fa-headphones", name: "Âm thanh" },
-        { icon: "far fa-clock", name: "Đồng hồ thông minh" },
-        { icon: "fas fa-home", name: "Nhà thông minh" },
-        { icon: "fas fa-gamepad", name: "Phụ kiện Gaming" }
-    ];
-
     const handleHomeClick = () => {
         navigate('/');
+    };
+
+    const handleCategoryClick = (cat) => {
+        navigate(`/category/${cat.id}`);
+        setShowCategory(false);
     };
 
     const handleAccountClick = () => {
@@ -94,7 +104,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                     <div className="flex items-center gap-3">
                         <span className="font-semibold">VAT đầy đủ</span>
                         <span className="text-white/50">•</span>
-                        <span><i className="fas fa-truck mr-1.5"></i>Giao nhanh - Miễn phí cho đơn 300k</span>
+                        <span><i className="fas fa-truck mr-1.5"></i>Giao nhanh - Miễn phí vận chuyển cho đơn 300k</span>
                         <span className="text-white/50">•</span>
                         <span><i className="fas fa-sync-alt mr-1.5"></i>Thu cũ giá ngon - Lên đời tiết kiệm</span>
                         <span className="text-white/50">•</span>
@@ -144,6 +154,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                                 {categories.map((cat, index) => (
                                     <div
                                         key={index}
+                                        onClick={() => handleCategoryClick(cat)}
                                         className="px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-3"
                                     >
                                         <i className={`${cat.icon} w-5 text-center text-gray-400`}></i>

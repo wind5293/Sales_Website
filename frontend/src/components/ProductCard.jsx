@@ -27,11 +27,12 @@ const ProductCard = ({ image, category, title, price, oldPrice, discountPercent,
             )}
 
             {/* Ảnh sản phẩm */}
-            <div className="h-44 w-full flex items-center justify-center overflow-hidden mb-4 bg-slate-50 rounded-lg p-2 relative">
+            <div className="h-44 w-full flex items-center justify-center overflow-hidden mb-4 bg-slate-50 rounded-md p-2 relative">
                 {image ? (
                     <img
                         src={image}
                         alt={title}
+                        loading="lazy"
                         className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                             // Fallback nếu ảnh lỗi
@@ -72,6 +73,12 @@ const ProductCard = ({ image, category, title, price, oldPrice, discountPercent,
             {/* Nút thêm giỏ hàng */}
             <button
                 disabled={isOutOfStock}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (isOutOfStock) return;
+                    alert(`Thêm "${title}" vào giỏ hàng!`);
+                }}    
                 className={`mt-4 w-full font-semibold py-2.5 rounded-md text-xs transition-colors flex items-center justify-center gap-2
                     ${isOutOfStock
                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'

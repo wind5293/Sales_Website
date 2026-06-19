@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import ProductCard from '../components/ProductCard';
 
@@ -115,7 +116,7 @@ const Homepage = () => {
                                 </a>
                             </div>
                         </div>
-                        <div className="group flex-1 rounded-2xl relative overflow-hidden p-6 text-[#1e293b] flex items-center bg-[#fbbf24]/10 border border-[#fbbf24]/30">
+                        <div className="group flex-1 rounded-md relative overflow-hidden p-6 text-[#1e293b] flex items-center bg-[#fbbf24]/10 border border-[#fbbf24]/30">
                             <div
                                 className="absolute inset-0 bg-cover bg-center opacity-20 group-hover:scale-105 transition-transform duration-700"
                                 style={{ backgroundImage: "url('https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=600')" }}
@@ -198,8 +199,8 @@ const Homepage = () => {
                                     key={tab.key}
                                     onClick={() => setActiveTab(tab.key)}
                                     className={`pb-3 cursor-pointer transition-colors ${activeTab === tab.key
-                                            ? 'text-[#1e293b] border-b-2 border-[#fbbf24]'
-                                            : 'hover:text-[#1e293b]'
+                                        ? 'text-[#1e293b] border-b-2 border-[#fbbf24]'
+                                        : 'hover:text-[#1e293b]'
                                         }`}
                                 >
                                     {tab.label}
@@ -229,16 +230,17 @@ const Homepage = () => {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {displayProducts.map((product) => (
-                                <ProductCard
-                                    key={product.id}
-                                    image={product.thumbnailUrl}
-                                    category={product.categoryName}
-                                    title={product.name}
-                                    price={product.price}
-                                    oldPrice={product.originalPrice}
-                                    discountPercent={product.discountPercent}
-                                    status={product.status}
-                                />
+                                <Link to={`/product/${product.id}`} key={product.id}>
+                                    <ProductCard
+                                        image={product.thumbnailUrl}
+                                        category={product.categoryName}
+                                        title={product.name}
+                                        price={product.price}
+                                        oldPrice={product.originalPrice}
+                                        discountPercent={product.discountPercent}
+                                        status={product.status}
+                                    />
+                                </Link>
                             ))}
                         </div>
                     )}
