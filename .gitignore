@@ -9,3 +9,7 @@ __pycache__/
 
 # Bỏ qua file chứa key bảo mật
 firebase-key.json
+
+API.md
+ARCHITECTURE.md
+PROJECT.md

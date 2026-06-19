@@ -21,27 +21,20 @@ export default function Login({ onNavigate, onLoginSuccess }) {
         }
 
         try {
-            const response = await axios.post('http://127.0.0.1:8000/api/login', {
+            const response = await axios.post('http://127.0.0.1:8000/api/auth/login', {
                 email: email,
                 password: password
             });
 
             setMessage(`🎉 ${response.data.message}`);
 
-            if (response.data.user && response.data.access_token) {
-                // Lưu token
-                localStorage.setItem('auth_token', response.data.access_token);
-                
-                // Lưu thông tin user
-                localStorage.setItem('user_email', response.data.user.email);
-                localStorage.setItem('user_name', response.data.user.username || 'Guest');
-                localStorage.setItem('user_data', JSON.stringify(response.data.user));
+            const userData = response.data.user;
+            localStorage.setItem('user_email', userData.email);
+            localStorage.setItem('user_name', userData.username || 'Guest');
+            localStorage.setItem('user_data', JSON.stringify(userData));
 
-                const username = response.data.user.username || 'Guest';
-                if (onLoginSuccess) {
-                    onLoginSuccess(username);
-                }
-                window.location.reload();
+            if (onLoginSuccess) {
+                onLoginSuccess(userData.username || 'Guest');
             }
 
             setTimeout(() => {

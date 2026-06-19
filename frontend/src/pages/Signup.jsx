@@ -22,7 +22,7 @@ export default function Signup({ onNavigate }) {
         }
 
         try {
-            const response = await axios.post('http://127.0.0.1:8000/api/signup', {
+            const response = await axios.post('http://127.0.0.1:8000/api/auth/signup', {
                 username: username,
                 password: password,
                 email: email,
