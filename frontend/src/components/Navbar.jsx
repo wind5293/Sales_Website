@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
 
     const [showPopup, setShowPopup] = useState(false);
@@ -42,14 +44,13 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     ];
 
     const handleHomeClick = () => {
-        if (onNavigate) onNavigate('home');
-    }
+        navigate('/');
+    };
 
     const handleAccountClick = () => {
         if (username === 'Welcome') {
-            if (onNavigate) onNavigate('login');
+            navigate('/login');
         } else {
-            // if (onNavigate) onNavigate('profile');
             setShowPopup(!showPopup);
             setShowCategory(false);
             setShowLocation(false);
@@ -59,12 +60,12 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const handleLogout = () => {
         localStorage.removeItem('user_name');
         localStorage.removeItem('user_email');
-        localStorage.removeItem('auth_token'); 
+        localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
 
         setShowPopup(false);
-        if (onLogout) onLogout(); 
-        if (onNavigate) onNavigate('home');
+        if (onLogout) onLogout();
+        navigate('/');
     };
 
     const handleSearchKeyDown = (e) => {

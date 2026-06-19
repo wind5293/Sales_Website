@@ -40,6 +40,16 @@ def get_products(
 
     return {"products": products, "total": len(products)}
 
+@router.get("/category/all")
+def get_categories():
+    """Lấy toàn bộ danh mục"""
+    docs = db.collection("categories").stream()
+    categories = []
+    for doc in docs:
+        c = doc.to_dict()
+        c["id"] = doc.id
+        categories.append(c)
+    return {"categories": categories}
 
 @router.get("/{product_id}")
 def get_product(product_id: str):
@@ -111,15 +121,3 @@ def delete_product(product_id: str):
     # Ẩn thay vì xóa hẳn để giữ lịch sử đơn hàng
     doc_ref.update({"status": "hidden", "updatedAt": datetime.now()})
     return {"message": "Đã ẩn sản phẩm"}
-
-
-@router.get("/category/all")
-def get_categories():
-    """Lấy toàn bộ danh mục"""
-    docs = db.collection("categories").stream()
-    categories = []
-    for doc in docs:
-        c = doc.to_dict()
-        c["id"] = doc.id
-        categories.append(c)
-    return {"categories": categories}

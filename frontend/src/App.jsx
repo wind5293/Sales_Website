@@ -1,70 +1,69 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
 import SearchPage from "./pages/SearchPage";
 import Cart from "./pages/Cart";
+import ProductDetail from "./pages/ProductDetail";
 
-export default function App() {
-    const [currentPage, setCurrentPage] = useState('home'); 
+function AppContent() {
     const [user, setUser] = useState('Welcome');
-
-    const [searchKeyword, setSearchKeyword] = useState('');
+    const navigate = useNavigate();
 
     const checkLoginStatus = () => {
         const token = localStorage.getItem('auth_token');
-        const savedUserName = localStorage.getItem('user_name');
-
-        if (token && savedUserName) {
-            setUser(savedUserName);
-        } else {
-            setUser('Welcome');
-        }
-    };
+        const savedUserName = localStorage.getItem('user_name');   
+        setUser(token && savedUserName ? savedUserName : 'Welcome');
+    }
 
     useEffect(() => {
         checkLoginStatus();
     }, []);
 
-    const handleNavigate = (pageName) => {
-        setCurrentPage(pageName);
-    };
-
     const handleLoginSuccess = (username) => {
         setUser(username);
-        setCurrentPage('home');
-    };
+    }
 
     const handleLogoutSuccess = () => {
         setUser('Welcome');
-        setCurrentPage('home');
-    };
+        navigate('/');
+    }
 
     const handleSearchSubmit = (keyword) => {
-        setSearchKeyword(keyword);
-        setCurrentPage('search');
-    };
+        navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
+    }
 
     const handleCartClick = () => {
-        setCurrentPage('cart');
+        navigate('/cart');
     }
 
     return (
         <div>
-            <Navbar 
-                onNavigate={handleNavigate} 
-                username={user} 
-                onLogout={handleLogoutSuccess} 
+            <Navbar
+                username={user}
+                onLogout={handleLogoutSuccess}
                 onSearch={handleSearchSubmit}
                 onCartClick={handleCartClick}
             />
 
-            {currentPage === 'home' && <Homepage />}
-            {currentPage === 'login' && <Login onNavigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />}
-            {currentPage === 'signup' && <Signup onNavigate={handleNavigate} />}
-            {currentPage === 'search' && <SearchPage keyword={searchKeyword} />}
-            {currentPage === 'cart' && <Cart />}
+            <Routes>
+                <Route path="/" element={<Homepage />} />
+                <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+            </Routes>
         </div>
+    );
+}
+
+export default function App() {
+    return (
+        <BrowserRouter>
+            <AppContent />
+        </BrowserRouter>
     );
 }

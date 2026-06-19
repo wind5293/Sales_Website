@@ -1,4 +1,9 @@
-export default function SearchPage({ keyword }) {
+import { useSearchParams } from "react-router-dom";
+
+export default function SearchPage() {
+    const [searchParams] = useSearchParams();
+    const keyword = searchParams.get('q') || '';
+
     return (
         <div className="min-h-screen w-full flex items-center justify-center bg-white px-4 sm:px-6 py-10">
             {/* Tiêu đề Tìm kiếm */}

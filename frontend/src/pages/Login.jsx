@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { GoogleIcon, FacebookIcon } from "../components/Icons";
 
 export default function Login({ onNavigate, onLoginSuccess }) {
+    const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(false);
@@ -38,7 +40,7 @@ export default function Login({ onNavigate, onLoginSuccess }) {
             }
 
             setTimeout(() => {
-                onNavigate("home");
+                navigate('/');
             }, 2000);
 
         } catch(err) {
@@ -71,7 +73,7 @@ export default function Login({ onNavigate, onLoginSuccess }) {
                         href="#" 
                         onClick={(e) => {
                             e.preventDefault();
-                            onNavigate("signup");
+                            navigate('/signup');
                         }}
                         className="font-semibold text-gray-900 hover:underline">
                             Đăng ký ngay
