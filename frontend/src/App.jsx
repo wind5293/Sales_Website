@@ -8,6 +8,7 @@ import SearchPage from "./pages/SearchPage";
 import Cart from "./pages/Cart";
 import ProductDetail from "./pages/ProductDetail";
 import CategoryPage from "./pages/CategoryPage";
+import Footer from "./components/Footer";
 
 function AppContent() {
     const [user, setUser] = useState('Welcome');
@@ -58,6 +59,8 @@ function AppContent() {
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/category/:categoryId" element={<CategoryPage />} />
             </Routes>
+
+            <Footer />
         </div>
     );
 }

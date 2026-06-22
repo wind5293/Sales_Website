@@ -81,16 +81,16 @@ const ProductDetail = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white p-6 lg:p-8 rounded-md border border-slate-200">
 
                     {/* Cột ảnh */}
-                    <div>
+                    <div className="self-start sticky top-8">
                         <div className="h-96 w-full flex items-center justify-center bg-slate-50 rounded-lg p-4 mb-4">
-                            {activeImage ? (
-                                <img src={activeImage} alt={product.name} className="max-h-full max-w-full object-contain" />
-                            ) : (
-                                <i className="fas fa-image text-6xl text-slate-300"></i>
-                            )}
+                                {activeImage ? (
+                                    <img src={activeImage} alt={product.name} className="max-h-full max-w-full object-contain" />
+                                ) : (
+                                    <i className="fas fa-image text-6xl text-slate-300"></i>
+                                )}
                         </div>
                         {gallery.length > 1 && (
-                            <div className="flex gap-3">
+                            <div className="flex gap-3 overflow-x-auto pb-1">
                                 {gallery.map((img, i) => (
                                     <button
                                         key={i}

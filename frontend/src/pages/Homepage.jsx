@@ -79,8 +79,8 @@ const Homepage = () => {
                                 {heroProduct?.categoryName || 'Sản phẩm nổi bật'}
                             </span>
                             <h1 className="text-4xl lg:text-5xl font-extrabold mb-4 leading-tight">
-                                Shop to get what{' '}
-                                <span className="text-[#fbbf24]">you love.</span>
+                                Mua sắm những gì{' '}
+                                <span className="text-[#fbbf24]">bạn thích.</span>
                             </h1>
                             <p className="text-slate-300 text-sm mb-2">
                                 {heroProduct?.name || 'Khám phá các sản phẩm Apple chính hãng'}

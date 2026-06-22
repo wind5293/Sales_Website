@@ -159,7 +159,7 @@ export default function Signup() {
                                 className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
                                 aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                             >
-                                <i className={showPassword ? "far fa-eye" : "far fa-eye-slash"}></i>
+                                <i className={showPassword ? "far fa-eye-slash" : "far fa-eye"}></i>
                             </button>
                         </div>
                     </div>

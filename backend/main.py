@@ -8,7 +8,8 @@ from app.routers import auth, products, cart, orders
 app = FastAPI(
     title="Apple Store API",
     description="Backend cho web bán hàng Apple",
-    version="1.0.0"
+    version="1.0.0",
+    swagger_ui_parameters={"persistAuthorization": True}
 )
 
 # CORS — cho phép React frontend gọi API
@@ -23,6 +24,8 @@ app.add_middleware(
 # Gắn các router
 app.include_router(auth.router)
 app.include_router(products.router)
+app.include_router(cart.router)
+app.include_router(orders.router)
 
 @app.get("/")
 def root():
