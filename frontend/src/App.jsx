@@ -1,22 +1,26 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { CartProvider, useCart } from "./context/CartContext";
+import CheckoutPage from "./pages/CheckoutPage";
+import CartDrawner from "./components/CartDrawner";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
 import SearchPage from "./pages/SearchPage";
-import Cart from "./pages/Cart";
 import ProductDetail from "./pages/ProductDetail";
 import CategoryPage from "./pages/CategoryPage";
 import Footer from "./components/Footer";
 
-function AppContent() {
+const AppContent = () => {
     const [user, setUser] = useState('Welcome');
     const navigate = useNavigate();
 
+    const { openCart } = useCart();
+
     const checkLoginStatus = () => {
         const token = localStorage.getItem('auth_token');
-        const savedUserName = localStorage.getItem('user_name');   
+        const savedUserName = localStorage.getItem('user_name');
         setUser(token && savedUserName ? savedUserName : 'Welcome');
     }
 
@@ -47,28 +51,33 @@ function AppContent() {
                 username={user}
                 onLogout={handleLogoutSuccess}
                 onSearch={handleSearchSubmit}
-                onCartClick={handleCartClick}
+                onCartClick={openCart}
             />
+
+            <CartDrawner />
 
             <Routes>
                 <Route path="/" element={<Homepage />} />
                 <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/search" element={<SearchPage />} />
-                <Route path="/cart" element={<Cart />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/category/:categoryId" element={<CategoryPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
             </Routes>
 
             <Footer />
         </div>
+
     );
 }
 
 export default function App() {
     return (
         <BrowserRouter>
-            <AppContent />
-        </BrowserRouter>
+            <CartProvider>
+                <AppContent />
+            </CartProvider>
+        </BrowserRouter >
     );
 }

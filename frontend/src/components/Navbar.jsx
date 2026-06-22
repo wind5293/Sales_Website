@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const CATEGORY_ICONS = {
     'iPhone': 'fas fa-mobile-alt',
@@ -23,6 +24,8 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const popupRef = useRef(null); 
     const categoryRef = useRef(null);
     const locationRef = useRef(null);
+
+    const { totalItems, openCart } = useCart();
 
     useEffect(() => {
         axios.get('http://127.0.0.1:8000/api/products/category/all')
@@ -226,14 +229,14 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
 
                         {/* Giỏ hàng */}
                         <div 
-                        onClick={handleCartClick}
+                        onClick={openCart}
                         className="cursor-pointer hover:text-white/80 transition-colors flex items-center gap-2">
                             <span className="hidden md:block text-sm">Giỏ hàng</span>
                             <div className="relative">
                                 <i className="fas fa-shopping-cart text-2xl"></i>
                                 {/* Dùng màu vàng của logo #fbbf24 */}
                                 <span className="absolute -top-1 -right-2 bg-[#fbbf24] text-red-700 text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                                    3
+                                    { totalItems > 0 ? (totalItems > 99 ? '99+' : totalItems) : '' }
                                 </span>
                             </div>
                         </div>

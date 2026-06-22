@@ -154,24 +154,24 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
  
     @firestore.transactional
     def _decrement_stock(transaction, items):
+        refs_and_snaps = []
         for item in items:
             product_ref = db.collection("products").document(item["productId"])
-            product_snap = product_ref.get(transaction=transaction)
+            product_snap = product_ref.get(transaction=transaction)  # chỉ đọc
+            refs_and_snaps.append((product_ref, product_snap, item))
+            
+        for product_ref, product_snap, item in refs_and_snaps:
             if not product_snap.exists:
                 raise Exception(f"Sản phẩm {item['productId']} không tồn tại")
  
             current_stock = product_snap.to_dict().get("stockQuantity", 0)
-            new_stock = current_stock - item["quantity"]
+            new_stock = max(0, current_stock - item["quantity"])
  
-            updates = {
-                "stockQuantity": new_stock,
-                "updatedAt": datetime.now(),
-            }
+            updates = {"stockQuantity": new_stock, "updatedAt": datetime.now()}
             if new_stock <= 0:
                 updates["status"] = "out_of_stock"
-                updates["stockQuantity"] = 0
  
-            transaction.update(product_ref, updates)
+            transaction.update(product_ref, updates) 
  
     try:
         _decrement_stock(transaction, order_items)

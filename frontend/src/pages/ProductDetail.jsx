@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 import axios from "axios";
 
 const formatPrice = (price) => {
@@ -9,10 +10,13 @@ const formatPrice = (price) => {
 
 const ProductDetail = () => {
     const { id } = useParams();
+    const { addToCart } = useCart();
+
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [activeImage, setActiveImage] = useState(null);
+    const [cartMsg, setCartMsg] = useState('');
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -30,6 +34,12 @@ const ProductDetail = () => {
         };
         fetchProduct();
     }, [id]);
+
+    const handleAddToCart = async () => {
+        const result = await addToCart(product.id, 1);
+        if (!result.success) setCartMsg(result.message);
+        // nếu thành công, CartDrawer tự mở
+    };
 
     if (loading) {
         return (
@@ -157,6 +167,7 @@ const ProductDetail = () => {
                         </div>
 
                         <button
+                            onClick={handleAddToCart}
                             disabled={isOutOfStock}
                             className={`w-full font-semibold py-3 rounded-md text-sm transition-colors flex items-center justify-center gap-2
                                 ${isOutOfStock
@@ -167,6 +178,7 @@ const ProductDetail = () => {
                             <i className="fas fa-shopping-basket"></i>
                             {isOutOfStock ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
                         </button>
+                        {cartMsg && <p className="text-red-500 text-sm mt-2">{cartMsg}</p>}
 
                         {/* Thông số kỹ thuật */}
                         {product.specs && product.specs.length > 0 && (

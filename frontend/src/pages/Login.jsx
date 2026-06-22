@@ -27,6 +27,7 @@ export default function Login({ onNavigate, onLoginSuccess }) {
                 email: email,
                 password: password
             });
+            localStorage.setItem('auth_token', response.data.idToken);
 
             setMessage(`🎉 ${response.data.message}`);
 
@@ -42,6 +43,8 @@ export default function Login({ onNavigate, onLoginSuccess }) {
             setTimeout(() => {
                 navigate('/');
             }, 2000);
+
+            console.log(response.data);
 
         } catch(err) {
             if (err.response && err.response.data) {
