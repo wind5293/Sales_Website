@@ -12,6 +12,13 @@ class SignupRequest(BaseModel):
     email: str
     tel: str
 
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = None
+    place: Optional[str] = None
+    tel: Optional[str] = None
+
 # ── Products ──────────────────────────────────────
 class CreateProductRequest(BaseModel):
     name: str

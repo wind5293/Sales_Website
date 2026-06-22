@@ -11,6 +11,31 @@ const CATEGORY_ICONS = {
     'AirPods': 'fas fa-headphones',
 };
 
+const CATEGORY_MENU_USER = {
+    'Tài khoản': 'fas '
+}
+
+const USER_MENU_ITEMS = [
+    { 
+        id: 'profile', 
+        name: 'Tài khoản của tôi', 
+        icon: 'far fa-user', 
+        path: '/profile' 
+    },
+    { 
+        id: 'orders', 
+        name: 'Đơn mua', 
+        icon: 'fas fa-clipboard-list', 
+        path: '/orders' 
+    },
+    { 
+        id: 'notifications', 
+        name: 'Thông báo', 
+        icon: 'far fa-bell', 
+        path: '/notifications' 
+    }
+];
+
 const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const navigate = useNavigate();
 
@@ -68,6 +93,11 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
             setShowCategory(false);
             setShowLocation(false);
         }
+    };
+
+    const handleUserMenuClick = (path) => {
+        setShowPopup(false); // Đóng popup
+        navigate(path);      // Chuyển trang
     };
 
     const handleLogout = () => {
@@ -194,7 +224,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                                         key={index}
                                         onClick={() => {
                                             setSelectedLocation(loc);
-                                            setShowLocation(false); // Chọn xong tự đóng popup
+                                            setShowLocation(false); 
                                         }}
                                         className={`px-4 py-2 text-sm cursor-pointer transition-colors ${selectedLocation === loc
                                                 ? 'bg-amber-100 text-amber-700 font-semibold'
@@ -252,12 +282,31 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                             </div>
 
                             {showPopup && username !== 'Welcome' && (
-                                <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md py-2 z-50 border border-gray-200">
+
+                                    {/* Header: Tên người dùng */}
+                                    <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                                        <p className="text-sm font-semibold text-gray-800 line-clamp-1">{username}</p>
+                                    </div>
+
+                                    {/* Các mục Menu */}
+                                    {USER_MENU_ITEMS.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => handleUserMenuClick(item.path)}
+                                            className="px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-3"
+                                        >
+                                            <i className={`${item.icon} w-4 text-center text-gray-400`}></i>
+                                            <span className="font-medium">{item.name}</span>
+                                        </div>
+                                    ))}
+                                    {/* Nút Đăng xuất */}
                                     <button
                                         onClick={handleLogout}
-                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-2 font-medium"
+                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-3 font-medium"
                                     >
-                                        <i className="fas fa-sign-out-alt"></i> Đăng xuất
+                                        <i className="fas fa-sign-out-alt w-4 text-center"></i>
+                                        <span>Đăng xuất</span>
                                     </button>
                                 </div>
                             )}

@@ -51,6 +51,141 @@ def get_categories():
         categories.append(c)
     return {"categories": categories}
 
+@router.get("/search")
+def search_products(
+    q: str = Query(..., min_length=1, description="Từ khóa tìm kiếm"),
+    limit: int = Query(20, le=100),
+    skip: int = Query(0, ge=0),
+):
+    """
+    Full-text search sản phẩm theo tên, mô tả, brand, categoryName.
+    Firestore không hỗ trợ full-text search nên tải về rồi filter phía server.
+    Với dataset lớn (>1000 sản phẩm) nên chuyển sang Algolia hoặc Elasticsearch.
+    """
+    keyword = q.strip().lower()
+
+    # Lấy toàn bộ sản phẩm active (không lấy hidden)
+    docs = db.collection("products").where("status", "!=", "hidden").stream()
+
+    matched = []
+    for doc in docs:
+        p = doc.to_dict()
+        p["id"] = doc.id
+
+        # Tìm trong các field text
+        searchable = " ".join([
+            p.get("name", ""),
+            p.get("brand", ""),
+            p.get("categoryName", ""),
+            p.get("shortDescription", ""),
+            p.get("description", ""),
+            p.get("sku", ""),
+        ]).lower()
+
+        if keyword in searchable:
+            matched.append(p)
+
+    # Sắp xếp: ưu tiên match trong tên trước
+    matched.sort(key=lambda p: (
+        0 if keyword in p.get("name", "").lower() else 1
+    ))
+
+    total = len(matched)
+    paginated = matched[skip: skip + limit]
+
+    return {
+        "items": paginated,
+        "total": total,
+        "keyword": q,
+        "limit": limit,
+        "skip": skip,
+    }
+
+
+@router.get("/filter")
+def filter_products(
+    category: Optional[str] = Query(None, description="categoryId hoặc categoryName"),
+    price_min: Optional[float] = Query(None, ge=0, description="Giá tối thiểu"),
+    price_max: Optional[float] = Query(None, ge=0, description="Giá tối đa"),
+    rating_min: Optional[float] = Query(None, ge=0, le=5, description="Rating tối thiểu (0-5)"),
+    in_stock: Optional[bool] = Query(None, description="Chỉ lấy hàng còn hàng"),
+    limit: int = Query(20, le=100),
+    skip: int = Query(0, ge=0),
+):
+    """
+    Lọc sản phẩm nâng cao theo nhiều tiêu chí.
+    Trả về filters_applied để frontend biết filter nào đang active.
+    """
+    # Bắt đầu query — luôn bỏ sản phẩm hidden
+    query = db.collection("products").where("status", "!=", "hidden")
+
+    # Filter có thể đẩy xuống Firestore (index sẵn)
+    if in_stock is True:
+        query = query.where("status", "==", "active")
+
+    docs = query.stream()
+
+    items = []
+    for doc in docs:
+        p = doc.to_dict()
+        p["id"] = doc.id
+
+        # ── Filter phía server (Firestore không hỗ trợ range + where kết hợp tốt) ──
+
+        # Lọc theo category — khớp cả categoryId lẫn categoryName
+        if category:
+            cat_lower = category.lower()
+            match_id = p.get("categoryId", "").lower() == cat_lower
+            match_name = cat_lower in p.get("categoryName", "").lower()
+            if not (match_id or match_name):
+                continue
+
+        # Lọc theo giá
+        price = p.get("price", 0)
+        if price_min is not None and price < price_min:
+            continue
+        if price_max is not None and price > price_max:
+            continue
+
+        # Lọc theo rating
+        if rating_min is not None:
+            rating = p.get("rating", 0) or 0
+            if rating < rating_min:
+                continue
+
+        # Lọc hàng còn hàng (in_stock=False → lấy cả out_of_stock)
+        if in_stock is False:
+            if p.get("status") != "out_of_stock":
+                continue
+
+        items.append(p)
+
+    # Sắp xếp mặc định: nổi bật trước, rồi theo giá tăng dần
+    items.sort(key=lambda p: (
+        0 if p.get("isFeatured") else 1,
+        p.get("price", 0)
+    ))
+
+    total = len(items)
+    paginated = items[skip: skip + limit]
+
+    # Ghi lại các filter đang được áp dụng để trả về cho frontend
+    filters_applied = {k: v for k, v in {
+        "category": category,
+        "price_min": price_min,
+        "price_max": price_max,
+        "rating_min": rating_min,
+        "in_stock": in_stock,
+    }.items() if v is not None}
+
+    return {
+        "items": paginated,
+        "total": total,
+        "filters_applied": filters_applied,
+        "limit": limit,
+        "skip": skip,
+    }
+
 @router.get("/{product_id}")
 def get_product(product_id: str):
     """Lấy chi tiết 1 sản phẩm theo ID"""

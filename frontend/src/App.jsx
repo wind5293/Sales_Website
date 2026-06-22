@@ -11,6 +11,7 @@ import SearchPage from "./pages/SearchPage";
 import ProductDetail from "./pages/ProductDetail";
 import CategoryPage from "./pages/CategoryPage";
 import Footer from "./components/Footer";
+import Profile from "./pages/Profile";
 
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
@@ -38,7 +39,7 @@ const AppContent = () => {
     }
 
     const handleSearchSubmit = (keyword) => {
-        navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
+        navigate(`/search?q=${encodeURIComponent(keyword)}`);
     }
 
     const handleCartClick = () => {
@@ -52,6 +53,7 @@ const AppContent = () => {
                 onLogout={handleLogoutSuccess}
                 onSearch={handleSearchSubmit}
                 onCartClick={openCart}
+                on
             />
 
             <CartDrawner />
@@ -64,6 +66,7 @@ const AppContent = () => {
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/category/:categoryId" element={<CategoryPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/profile" element={<Profile />} />
             </Routes>
 
             <Footer />
