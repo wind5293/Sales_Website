@@ -28,7 +28,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const { totalItems, openCart } = useCart();
 
     useEffect(() => {
-        axios.get('http://127.0.0.1:8000/api/products/category/all')
+        axios.get('/api/products/category/all')
             .then(res => setCategories(res.data.categories || []))
             .catch(() => { });
     }, []);

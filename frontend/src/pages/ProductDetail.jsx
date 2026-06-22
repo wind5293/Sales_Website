@@ -23,7 +23,7 @@ const ProductDetail = () => {
             setLoading(true);
             setError(false);
             try {
-                const res = await axios.get(`http://127.0.0.1:8000/api/products/${id}`);
+                const res = await axios.get(`/api/products/${id}`);
                 setProduct(res.data);
                 setActiveImage(res.data.thumbnailUrl || (res.data.images && res.data.images[0]) || null);
             } catch (err) {

@@ -17,7 +17,7 @@ const Homepage = () => {
         const fetchData = async () => {
             try {
                 // Lấy sản phẩm (mặc định status=active, limit=8)
-                const res = await axios.get('http://127.0.0.1:8000/api/products?limit=8');
+                const res = await axios.get('/api/products?limit=8');
                 const allProducts = res.data.products;
                 setProducts(allProducts);
 
@@ -27,7 +27,7 @@ const Homepage = () => {
                 }
 
                 // Lấy danh mục
-                const catRes = await axios.get('http://127.0.0.1:8000/api/products/category/all');
+                const catRes = await axios.get('/api/products/category/all');
                 setCategories(catRes.data.categories);
 
             } catch (err) {

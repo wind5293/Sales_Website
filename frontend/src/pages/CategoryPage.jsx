@@ -29,7 +29,7 @@ const CategoryPage = () => {
         const fetchProducts = async () => {
             try {
                 const res = await axios.get(
-                    `http://127.0.0.1:8000/api/products?categoryId=${categoryId}&limit=100`
+                    `/api/products?categoryId=${categoryId}&limit=100`
                 );
                 const data = res.data.products || [];
                 setProducts(data);

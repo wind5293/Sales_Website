@@ -54,6 +54,11 @@ class UpdateCartItemRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     shippingAddress: str
     phone: str
+    name: Optional[str] = ""
+    note: Optional[str] = ""
+    paymentMethod: Optional[str] = "cod"
+    shippingMethod: Optional[str] = "fast"
+    voucherCode: Optional[str] = None
 
 class UpdateOrderStatusRequest(BaseModel):
     status: str  # pending | confirmed | shipped | delivered | cancelled

@@ -78,9 +78,10 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
     Flow:
       1. Lấy giỏ hàng của user
       2. Kiểm tra tồn kho từng sản phẩm
-      3. Tạo đơn hàng + snapshot sản phẩm tại thời điểm mua
-      4. Trừ tồn kho (dùng Firestore transaction để an toàn)
-      5. Xóa giỏ hàng
+      3. TÍnh phí ship + voucher
+      4. Tạo đơn hàng + snapshot sản phẩm tại thời điểm mua
+      5. Trừ tồn kho (dùng Firestore transaction để an toàn)
+      6. Xóa giỏ hàng
     """
     user_id = _get_user_id(authorization)
  
@@ -130,17 +131,62 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
             "quantity": item["quantity"],
             "subtotal": subtotal,
         })
+        
+    # ── 3. Tính phí ship + voucher ────────────────────────────────────────
+    SHIPPING_PRICES = {
+        "fast": 30000,
+        "standard": 15000,
+        "express": 60000,
+    }
+    shipping_fee = SHIPPING_PRICES.get(body.shippingMethod or "fast", 30000)
+ 
+    # Voucher — tính giảm giá nếu có
+    # Hiện tại validate đơn giản phía backend, sau này có thể lưu vào collection "vouchers"
+    VOUCHERS = {
+        "GIAM50K":  {"discount": 50000,  "percent": None, "minOrder": 500000},
+        "FREESHIP": {"discount": 30000,  "percent": None, "minOrder": 200000},
+        "SALE10":   {"discount": None,   "percent": 10,   "minOrder": 300000},
+    }
+    discount_amount = 0
+    voucher_info = None
+ 
+    if body.voucherCode:
+        voucher = VOUCHERS.get(body.voucherCode.upper())
+        if voucher and total_price >= voucher["minOrder"]:
+            if voucher["percent"]:
+                discount_amount = round(total_price * voucher["percent"] / 100)
+            else:
+                discount_amount = voucher["discount"]
+            voucher_info = body.voucherCode.upper()
+ 
+    final_total = round(total_price + shipping_fee - discount_amount, 2)
  
     # ── 3. Tạo đơn hàng ──────────────────────────────────────────────────
     order_data = {
         "userId": user_id,
         "items": order_items,
-        "totalPrice": round(total_price, 2),
+ 
+        # Thông tin người nhận
+        "recipientName": body.name or "",
         "shippingAddress": body.shippingAddress,
         "phone": body.phone,
-        "status": "pending",           # pending → confirmed → shipped → delivered
-        "paymentStatus": "unpaid",     # unpaid | paid | refunded
-        "paymentMethod": "cod",        # mặc định COD, mở rộng sau
+        "note": body.note or "",
+ 
+        # Giá
+        "totalPrice": round(total_price, 2),
+        "shippingFee": shipping_fee,
+        "discountAmount": discount_amount,
+        "voucherCode": voucher_info,
+        "totalPrice": final_total,
+ 
+        # Vận chuyển & thanh toán
+        "shippingMethod": body.shippingMethod or "fast",
+        "paymentMethod": body.paymentMethod or "cod",
+ 
+        # Trạng thái
+        "status": "pending",        # pending → confirmed → shipped → delivered | cancelled
+        "paymentStatus": "unpaid",  # unpaid | paid | refunded
+ 
         "createdAt": datetime.now(),
         "updatedAt": datetime.now(),
     }
@@ -148,7 +194,7 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
     order_ref = db.collection("orders").add(order_data)
     order_id = order_ref[1].id
  
-    # ── 4. Trừ tồn kho ────────────────────────────────────────────────────
+    # ── 5. Trừ tồn kho ────────────────────────────────────────────────────
     # Dùng Firestore transaction để tránh race condition khi nhiều user cùng mua
     transaction = db.transaction()
  
@@ -180,15 +226,20 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
         db.collection("orders").document(order_id).delete()
         raise HTTPException(status_code=400, detail=f"Lỗi cập nhật tồn kho: {str(e)}")
  
-    # ── 5. Xóa giỏ hàng ──────────────────────────────────────────────────
+    # ── 6. Xóa giỏ hàng ──────────────────────────────────────────────────
     for item in cart_items:
         db.collection("carts").document(user_id).collection("items").document(item["id"]).delete()
  
     return {
         "message": "Đặt hàng thành công",
         "orderId": order_id,
-        "totalPrice": round(total_price, 2),
+        "itemsTotal": round(total_price, 2),
+        "shippingFee": shipping_fee,
+        "discountAmount": discount_amount,
+        "totalPrice": final_total,
         "status": "pending",
+        "shippingMethod": body.shippingMethod,
+        "paymentMethod": body.paymentMethod,
     }
     
 @router.patch("/{order_id}/cancel")
