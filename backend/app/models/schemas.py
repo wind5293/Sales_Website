@@ -84,6 +84,7 @@ class ChangePasswordRequest(BaseModel):
  
  
 class AddressRequest(BaseModel):
+    name: str
     street: str
     city: str
     district: str
@@ -93,6 +94,7 @@ class AddressRequest(BaseModel):
  
  
 class AddressUpdateRequest(BaseModel):
+    name: Optional[str] = None
     street: Optional[str] = None
     city: Optional[str] = None
     district: Optional[str] = None

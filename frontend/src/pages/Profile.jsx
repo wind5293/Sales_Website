@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
 
@@ -179,6 +179,30 @@ const Profile = () => {
                             <span className="text-[10px] text-slate-500 block mt-1">Mua sắm để tích thêm điểm thưởng</span>
                         </div>
 
+                        <div className="w-full mt-6 space-y-2">
+                            <Link
+                                to="/profile/addresses"
+                                className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-600 group"
+                            >
+                                <div className="w-6 flex justify-center">
+                                    <i className="fas fa-map-marker-alt text-slate-400 group-hover:text-amber-400 transition-colors"></i>
+                                </div>
+                                <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">Sổ địa chỉ</span>
+                                <i className="fas fa-chevron-right ml-auto text-[10px] text-slate-500 group-hover:text-amber-400 transition-colors"></i>
+                            </Link>
+
+                            <Link
+                                to="/profile/change-password"
+                                className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-600 group"
+                            >
+                                <div className="w-6 flex justify-center">
+                                    <i className="fas fa-lock text-slate-400 group-hover:text-amber-400 transition-colors"></i>
+                                </div>
+                                <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">Đổi mật khẩu</span>
+                                <i className="fas fa-chevron-right ml-auto text-[10px] text-slate-500 group-hover:text-amber-400 transition-colors"></i>
+                            </Link>
+                        </div>
+
                         <p className="text-[10px] text-slate-500 mt-6 text-center">ID: {formData.uid}</p>
                     </div>
 
@@ -192,7 +216,7 @@ const Profile = () => {
 
                                 {/* Username (Read-only) */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Tên tài khoản</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Tên tài khoản</label>
                                     <input
                                         type="text"
                                         value={formData.username}
@@ -203,7 +227,7 @@ const Profile = () => {
 
                                 {/* Email (Read-only) */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Địa chỉ Email</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Địa chỉ Email</label>
                                     <input
                                         type="email"
                                         value={formData.email}
@@ -214,7 +238,7 @@ const Profile = () => {
 
                                 {/* Họ và tên (Editable) */}
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Họ và tên</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Họ và tên</label>
                                     <input
                                         type="text"
                                         name="name"
@@ -227,7 +251,7 @@ const Profile = () => {
 
                                 {/* Số điện thoại (Editable) */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Số điện thoại</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Số điện thoại</label>
                                     <input
                                         type="tel"
                                         name="tel"
@@ -240,7 +264,7 @@ const Profile = () => {
 
                                 {/* Ngày sinh (Editable) */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Ngày sinh</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Ngày sinh</label>
                                     <input
                                         type="date"
                                         name="dob"
@@ -251,7 +275,7 @@ const Profile = () => {
                                 </div>
 
                                 <div className="sm:col-span-2 mt-1">
-                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Giới tính</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-2">Giới tính</label>
                                     <div className="flex items-center gap-6">
                                         <div className="flex items-center gap-2 cursor-pointer">
                                             <input
@@ -296,7 +320,7 @@ const Profile = () => {
 
                                 {/* Tỉnh / Thành phố (Editable - Dropdown) */}
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Tỉnh / Thành phố</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Tỉnh / Thành phố</label>
                                     <select
                                         name="place"
                                         value={formData.place}

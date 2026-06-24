@@ -145,22 +145,30 @@ def change_password(
  
         # Xác thực old_password qua Firebase Auth REST API
         import httpx, os
-        api_key = os.environ.get("FIREBASE_API_KEY")
+        api_key = os.environ.get("FIREBASE_WEB_API_KEY")
         if not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Cấu hình Firebase API key bị thiếu"
             )
- 
+
         signin_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
-        resp = httpx.post(signin_url, json={
-            "email": email,
-            "password": data.old_password,
-            "returnSecureToken": False
-        })
+        try:
+            resp = httpx.post(signin_url, json={
+                "email": email,
+                "password": data.old_password,
+                "returnSecureToken": True
+            }, timeout=10.0)
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=503, detail=f"Không thể kết nối Firebase: {str(e)}")
  
         if resp.status_code != 200:
+            error_body = resp.json()
+            print(f"Firebase signin error: {error_body}")
             raise HTTPException(status_code=400, detail="Mật khẩu cũ không đúng")
+ 
+        if data.old_password == data.new_password:
+            raise HTTPException(status_code=400, detail="Mật khẩu mới phải khác mật khẩu cũ")
  
         # Đặt mật khẩu mới
         auth.update_user(uid, password=data.new_password)
@@ -194,6 +202,7 @@ def add_address(
  
         address_ref.document(address_id).set({
             "address_id": address_id,
+            "name": data.name,
             "street": data.street,
             "city": data.city,
             "district": data.district,
@@ -258,6 +267,8 @@ def update_address(
             raise HTTPException(status_code=404, detail="Không tìm thấy địa chỉ")
  
         update_data = {}
+        if data.name is not None:
+            update_data["name"] = data.name
         if data.street is not None:
             update_data["street"] = data.street
         if data.city is not None:
@@ -312,6 +323,52 @@ def delete_address(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi xóa địa chỉ: {str(e)}"
+        )
+        
+        
+@router.post("/addresses/from-order", status_code=status.HTTP_201_CREATED)
+def save_address_from_order(
+    data: AddressRequest,
+    decoded_token: dict = Depends(verify_token)
+):
+    """Tự động lưu địa chỉ từ đơn hàng nếu chưa tồn tại"""
+    uid = get_uid(decoded_token)
+
+    try:
+        address_ref = db.collection("users").document(uid).collection("addresses")
+
+        # Kiểm tra trùng địa chỉ (so sánh street + district + city)
+        existing = address_ref.where("street", "==", data.street)\
+                              .where("district", "==", data.district)\
+                              .where("city", "==", data.city)\
+                              .limit(1).stream()
+
+        for _ in existing:
+            # Đã tồn tại → không lưu lại
+            return {"message": "Địa chỉ đã tồn tại", "saved": False}
+
+        # Chưa có → lưu mới, không đặt mặc định tự động
+        address_id = str(uuid.uuid4())
+        address_ref.document(address_id).set({
+            "name": data.name,
+            "address_id": address_id,
+            "street": data.street,
+            "city": data.city,
+            "district": data.district or "",
+            "zip_code": data.zip_code or "",
+            "phone": data.phone or "",
+            "is_default": False,
+            "created_at": SERVER_TIMESTAMP,
+        })
+
+        return {"address_id": address_id, "message": "Đã lưu địa chỉ mới", "saved": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi lưu địa chỉ: {str(e)}"
         )
 
 def _clear_default_addresses(address_ref, exclude_id: str = None):

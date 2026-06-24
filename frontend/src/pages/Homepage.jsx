@@ -143,7 +143,7 @@ const Homepage = () => {
                     if (!saleProduct) return null;
 
                     return (
-                        <section className="bg-white border border-slate-200 rounded-md p-6 lg:p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
+                        <section className="bg-white border border-slate-100 rounded-md p-6 lg:p-8 flex flex-col md:flex-row items-center gap-8">
                             <div className="flex-1 space-y-4">
                                 <div className="text-yellow-500 font-bold uppercase tracking-wider text-sm flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
@@ -188,7 +188,7 @@ const Homepage = () => {
 
                 {/* SECTION 3: DANH SÁCH SẢN PHẨM */}
                 <section id="products" className="space-y-6">
-                    <div className="border-b border-slate-200 pb-3 flex justify-between items-end">
+                    <div className="border-b border-slate-100 pb-3 flex justify-between items-end">
                         <div className="flex gap-6 text-sm font-semibold text-slate-400">
                             {[
                                 { key: 'featured', label: 'Sản phẩm nổi bật' },
@@ -213,7 +213,7 @@ const Homepage = () => {
                         /* Skeleton loading */
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {[...Array(8)].map((_, i) => (
-                                <div key={i} className="bg-white border border-slate-200 rounded-md p-4 animate-pulse">
+                                <div key={i} className="bg-white border border-slate-100 rounded-md p-4 animate-pulse">
                                     <div className="h-44 bg-slate-200 rounded-lg mb-4"></div>
                                     <div className="h-3 bg-slate-200 rounded mb-2 w-1/3"></div>
                                     <div className="h-4 bg-slate-200 rounded mb-1"></div>

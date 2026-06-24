@@ -65,7 +65,7 @@ const Footer = () => {
                             {PAYMENT_METHODS.map((method) => (
                                 <span
                                     key={method}
-                                    className="bg-white/10 text-slate-200 text-[11px] font-medium px-2.5 py-1 rounded border border-white/10"
+                                    className="bg-white/10 text-slate-200 text-[11px] font-medium px-2.5 py-1 rounded border border-white/10 border-slate-100"
                                 >
                                     {method}
                                 </span>

@@ -12,6 +12,8 @@ import ProductDetail from "./pages/ProductDetail";
 import CategoryPage from "./pages/CategoryPage";
 import Footer from "./components/Footer";
 import Profile from "./pages/Profile";
+import AddressBook from "./pages/AddressBook";
+import ChangePassword from "./pages/ChangePassword";
 
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
@@ -67,6 +69,8 @@ const AppContent = () => {
                 <Route path="/category/:categoryId" element={<CategoryPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/profile/addresses" element={<AddressBook />} />
+                <Route path="/profile/change-password" element={<ChangePassword />} />
             </Routes>
 
             <Footer />

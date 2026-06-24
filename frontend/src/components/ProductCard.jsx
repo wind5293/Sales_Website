@@ -10,7 +10,7 @@ const ProductCard = ({ image, category, title, price, oldPrice, discountPercent,
     const isOutOfStock = status === 'out_of_stock';
 
     return (
-        <div className={`bg-white border border-slate-200 rounded-md p-4 hover:shadow-md transition-all duration-300 flex flex-col justify-between group cursor-pointer relative ${isOutOfStock ? 'opacity-60' : ''}`}>
+        <div className={`bg-white border border-slate-100 rounded-md p-4 hover:shadow-md transition-all duration-300 flex flex-col justify-between group cursor-pointer relative ${isOutOfStock ? 'opacity-60' : ''}`}>
 
             {/* Badge giảm giá */}
             {discountPercent && !isOutOfStock && (
