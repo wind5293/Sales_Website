@@ -50,7 +50,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const categoryRef = useRef(null);
     const locationRef = useRef(null);
 
-    const { totalItems, openCart } = useCart();
+    const { totalItems, openCart, resetCart } = useCart();
 
     useEffect(() => {
         axios.get('/api/products/category/all')
@@ -105,6 +105,9 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
         localStorage.removeItem('user_email');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
+
+        localStorage.clear();
+        resetCart();
 
         setShowPopup(false);
         if (onLogout) onLogout();

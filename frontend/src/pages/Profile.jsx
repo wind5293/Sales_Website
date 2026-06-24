@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getAuth } from 'firebase/auth';
 
 const LOCATIONS = [
     "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Hải Phòng",
@@ -41,10 +42,27 @@ const Profile = () => {
             try {
                 setLoading(true);
                 // Giả định endpoint lấy thông tin user hiện tại (bằng token)
-                const res = await axios.get('/api/auth/me', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                let token = localStorage.getItem('auth_token');
 
+                let res;
+                try {
+                    res = await axios.get('/api/users/me', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                } catch (err) {
+                    // Token hết hạn → tự động login lại lấy token mới
+                    if (err.response?.status === 401) {
+                        const email = localStorage.getItem('user_email');
+                        const savedData = JSON.parse(localStorage.getItem('user_data') || '{}');
+
+                        // Không lưu password nên phải redirect về login
+                        setAlert({ type: 'error', message: 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại!' });
+                        localStorage.clear();
+                        setTimeout(() => navigate('/login'), 2000);
+                        return;
+                    }
+                    throw err;
+                }
                 const data = res.data || {};
 
                 // Xử lý các giá trị null thành chuỗi rỗng để không lỗi ô input trong React
@@ -89,11 +107,13 @@ const Profile = () => {
         const token = localStorage.getItem('auth_token');
         try {
             // Gửi dữ liệu cập nhật lên backend
-            await axios.patch('/api/users/profile', {
+            const token = await getAuth().currentUser.getIdToken();
+
+            await axios.patch('/api/users/me', {
                 name: formData.name,
                 dob: formData.dob,
                 gender: formData.gender,
-                place: formData.place,
+                address: formData.place,
                 tel: formData.tel
             }, {
                 headers: { Authorization: `Bearer ${token}` }

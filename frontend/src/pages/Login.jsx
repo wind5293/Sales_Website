@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { GoogleIcon, FacebookIcon } from "../components/Icons";
+import { useCart } from "../context/CartContext";
 
 export default function Login({ onNavigate, onLoginSuccess }) {
     const navigate = useNavigate();
@@ -11,6 +12,8 @@ export default function Login({ onNavigate, onLoginSuccess }) {
     const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState("")
     const [error, setError] = useState("")
+
+    const { fetchCart, resetCart } = useCart();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -39,6 +42,8 @@ export default function Login({ onNavigate, onLoginSuccess }) {
             if (onLoginSuccess) {
                 onLoginSuccess(userData.username || 'Guest');
             }
+
+            await fetchCart();
 
             setTimeout(() => {
                 navigate('/');

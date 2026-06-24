@@ -69,3 +69,33 @@ class CreateOrderRequest(BaseModel):
 
 class UpdateOrderStatusRequest(BaseModel):
     status: str  # pending | confirmed | shipped | delivered | cancelled
+    
+# ── Users ────────────────────────────────────────
+class ProfileUpdateRequest(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    dob: Optional[str] = None       # "YYYY-MM-DD"
+    address: Optional[str] = None
+    
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+ 
+ 
+class AddressRequest(BaseModel):
+    street: str
+    city: str
+    district: str
+    zip_code: str
+    phone: str
+    is_default: bool = False
+ 
+ 
+class AddressUpdateRequest(BaseModel):
+    street: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    zip_code: Optional[str] = None
+    phone: Optional[str] = None
+    is_default: Optional[bool] = None

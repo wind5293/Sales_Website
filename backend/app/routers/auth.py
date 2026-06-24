@@ -1,7 +1,7 @@
 import os
 import httpx
 
-from fastapi import APIRouter, Depends, HTTPException, security, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from firebase_admin import auth
 from app.models.schemas import LoginRequest, SignupRequest
 from app.services.firebase import get_db
@@ -137,39 +137,4 @@ def signup(body: SignupRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
-        )
-
-
-@router.get("/me")
-def get_me(decoded_token: dict = Depends(verify_token)):
-    """Lấy thông tin user hiện tại từ token"""
-    uid = decoded_token.get("uid")
-    if not uid:
-        raise HTTPException(status_code=401, detail="Token không hợp lệ")
-
-    try:
-        user_doc = db.collection("users").document(uid).get()
-        if not user_doc.exists:
-            raise HTTPException(status_code=404, detail="Không tìm thấy thông tin user")
-
-        user_data = user_doc.to_dict()
-        
-        # Đảm bảo trả về toàn bộ field cần thiết cho frontend
-        return {
-            "uid": user_data.get("uid", uid),
-            "username": user_data.get("username", ""),
-            "email": user_data.get("email", ""),
-            "name": user_data.get("name", ""),
-            "dob": user_data.get("dob", ""),
-            "place": user_data.get("place", ""),
-            "tel": user_data.get("tel", ""),
-            "points": user_data.get("points", 0),
-            "rank": user_data.get("rank", "Silver")
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi khi lấy thông tin user: {str(e)}"
         )

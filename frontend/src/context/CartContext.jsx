@@ -13,7 +13,13 @@ export const CartProvider = ({ children }) => {
     const [totalItems, setTotalItems] = useState(0);
     const [totalPrice, setTotalPrice] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [isOpen, setIsOpen] = useState(false); // trạng thái mở/đóng drawer
+    const [isOpen, setIsOpen] = useState(false);
+
+    const resetCart = useCallback(() => {
+        setItems([]);
+        setTotalItems(0);
+        setTotalPrice(0);
+    }, []);
 
     // Lấy giỏ hàng từ server
     const fetchCart = useCallback(async () => {
@@ -40,7 +46,16 @@ export const CartProvider = ({ children }) => {
     // Tải giỏ hàng khi app khởi động
     useEffect(() => {
         fetchCart();
-    }, [fetchCart]);
+        
+        const onStorageChange = (e) => {
+            if (e.key === 'auth_token') {
+                if (e.newValue) fetchCart();
+                else resetCart();
+            }
+        };
+        window.addEventListener('storage', e => onStorageChange(e));
+        return () => window.removeEventListener('storage', onStorageChange);
+    }, [fetchCart, resetCart]);
 
     // Thêm sản phẩm vào giỏ
     const addToCart = async (productId, quantity = 1) => {
@@ -106,6 +121,7 @@ export const CartProvider = ({ children }) => {
             items, totalItems, totalPrice, loading, isOpen,
             fetchCart, addToCart, updateQuantity, removeItem, clearCart,
             openCart, closeCart,
+            resetCart,
         }}>
             {children}
         </CartContext.Provider>
