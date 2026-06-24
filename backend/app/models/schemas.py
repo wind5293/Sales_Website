@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional
 
 # ── Auth ──────────────────────────────────────────
@@ -101,3 +101,24 @@ class AddressUpdateRequest(BaseModel):
     zip_code: Optional[str] = None
     phone: Optional[str] = None
     is_default: Optional[bool] = None
+    
+# ── Reviews ────────────────────────────────────────
+
+class CreateReviewRequest(BaseModel):
+    rating: int = Field(..., ge=1, le=5, description="Điểm đánh giá từ 1 đến 5")
+    title: Optional[str] = Field(None, max_length=200, description="Tiêu đề đánh giá")
+    text: str = Field(..., min_length=1, max_length=2000, description="Nội dung đánh giá")
+    # user_id thực tế nên lấy từ JWT token; ở đây nhận tạm qua body để dễ test
+    user_id: str = Field(..., description="ID người dùng (từ auth token)")
+    user_name: Optional[str] = Field(None, description="Tên hiển thị người dùng")
+
+
+class UpdateReviewRequest(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    title: Optional[str] = Field(None, max_length=200)
+    text: Optional[str] = Field(None, min_length=1, max_length=2000)
+    # user_id dùng để xác thực quyền sở hữu review
+    user_id: str = Field(..., description="ID người dùng (từ auth token)")
+    
+class UpdateReviewWithProduct(UpdateReviewRequest):
+    product_id: str = Field(..., description="ID sản phẩm chứa review này")
