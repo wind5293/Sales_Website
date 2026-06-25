@@ -78,11 +78,11 @@ export const CartProvider = ({ children }) => {
     };
 
     // Cập nhật số lượng
-    const updateQuantity = async (productId, quantity) => {
+    const updateQuantity = async (cartItemId, quantity) => {
         try {
             await axios.patch(
-                `/api/cart/item/${productId}`,
-                { productId, quantity },
+                `/api/cart/item/${cartItemId}`,
+                { quantity },
                 { headers: getAuthHeader() }
             );
             await fetchCart();
@@ -92,9 +92,9 @@ export const CartProvider = ({ children }) => {
     };
 
     // Xóa một sản phẩm
-    const removeItem = async (productId) => {
+    const removeItem = async (cartItemId) => {
         try {
-            await axios.delete(`/api/cart/item/${productId}`, { headers: getAuthHeader() });
+            await axios.delete(`/api/cart/item/${cartItemId}`, { headers: getAuthHeader() });
             await fetchCart();
         } catch (err) {
             console.error('Lỗi xóa sản phẩm:', err);

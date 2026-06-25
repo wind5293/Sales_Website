@@ -242,11 +242,11 @@ const CheckoutPage = () => {
                                         <span className="text-sm text-slate-600 border-slate-200 px-3 py-1">{item.quantity}</span>
                                     </div>
                                     <div className="hidden md:flex col-span-2 justify-end">
-                                        <span className="text-sm font-bold text-[#f59e0b]">{formatPrice(item.subtotal)}</span>
+                                        <span className="text-sm font-bold text-[#f59e0b]">{formatPrice(item.price * item.quantity)}</span>
                                     </div>
                                     <div className="md:hidden col-span-12 flex justify-between text-xs text-slate-500 -mt-2">
                                         <span>{formatPrice(item.price)} × {item.quantity}</span>
-                                        <span className="font-bold text-[#f59e0b]">{formatPrice(item.subtotal)}</span>
+                                        <span className="font-bold text-[#f59e0b]">{formatPrice(item.price * item.quantity)}</span>
                                     </div>
                                 </li>
                             ))}

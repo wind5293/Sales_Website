@@ -116,9 +116,9 @@ def add_to_cart(
     return {"message": "Đã thêm vào giỏ hàng"}
 
 
-@router.patch("/item/{item_id}")
+@router.patch("/item/{cart_item_id}")
 def update_cart_item(
-    item_id: str, 
+    cart_item_id: str, 
     body: UpdateCartItemRequest, 
     decoded_token: dict = Depends(verify_token)
 ):
@@ -127,7 +127,7 @@ def update_cart_item(
     if not user_id:
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
 
-    item_ref = db.collection("carts").document(user_id).collection("items").document(item_id)
+    item_ref = db.collection("carts").document(user_id).collection("items").document(cart_item_id)
     item_doc = item_ref.get()
 
     if not item_doc.exists:
@@ -143,17 +143,18 @@ def update_cart_item(
     return {"message": "Đã cập nhật số lượng"}
 
 
-@router.delete("/item/{item_id}")
-def remove_from_cart(item_id: str, decoded_token: dict = Depends(verify_token)):
+@router.delete("/item/{cart_item_id}")
+def remove_from_cart(cart_item_id: str, decoded_token: dict = Depends(verify_token)):
     """Xóa một sản phẩm khỏi giỏ hàng"""
     user_id = decoded_token.get("uid")
     if not user_id:
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
 
-    items_ref = db.collection("carts").document(user_id).collection("items")
-    docs = list(items_ref.where("productId", "==", item_id).limit(1).stream())
-    if not docs:
+    item_ref = db.collection("carts").document(user_id).collection("items").document(cart_item_id)
+    item_doc = item_ref.get()
+    
+    if not item_doc.exists:
         raise HTTPException(status_code=404, detail="Sản phẩm không có trong giỏ hàng")
 
-    docs[0].reference.delete()
+    item_ref.delete()
     return {"message": "Đã xóa sản phẩm khỏi giỏ hàng"}

@@ -232,6 +232,7 @@ const Homepage = () => {
                             {displayProducts.map((product) => (
                                 <Link to={`/product/${product.id}`} key={product.id}>
                                     <ProductCard
+                                        id={product.id}
                                         image={product.thumbnailUrl}
                                         category={product.categoryName}
                                         title={product.name}

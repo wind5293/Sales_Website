@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCart } from '../context/CartContext';
 
 // Format số thành tiền VNĐ: 29990000 → "29.990.000đ"
 const formatPrice = (price) => {
@@ -6,8 +7,23 @@ const formatPrice = (price) => {
     return Number(price).toLocaleString('vi-VN') + 'đ';
 };
 
-const ProductCard = ({ image, category, title, price, oldPrice, discountPercent, status }) => {
+const ProductCard = ({ id, image, category, title, price, oldPrice, discountPercent, status }) => {
     const isOutOfStock = status === 'out_of_stock';
+
+    const { addToCart } = useCart();
+    
+    const handleAddToCart = async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (isOutOfStock) return;
+
+        const result = await addToCart(id, 1);
+
+        if (!result.success) {
+            alert(result.message);
+        }
+    }
 
     return (
         <div className={`bg-white border border-slate-100 rounded-md p-4 hover:shadow-md transition-all duration-300 flex flex-col justify-between group cursor-pointer relative ${isOutOfStock ? 'opacity-60' : ''}`}>
@@ -73,12 +89,7 @@ const ProductCard = ({ image, category, title, price, oldPrice, discountPercent,
             {/* Nút thêm giỏ hàng */}
             <button
                 disabled={isOutOfStock}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (isOutOfStock) return;
-                    alert(`Thêm "${title}" vào giỏ hàng!`);
-                }}    
+                onClick={handleAddToCart}    
                 className={`mt-4 w-full font-semibold py-2.5 rounded-md text-xs transition-colors flex items-center justify-center gap-2
                     ${isOutOfStock
                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'

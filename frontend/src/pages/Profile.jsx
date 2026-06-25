@@ -157,7 +157,7 @@ const Profile = () => {
                     </div>
                 )}
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden grid grid-cols-1 md:grid-cols-3">
+                <div className="bg-white rounded-sm shadow-xs border border-slate-100 overflow-hidden grid grid-cols-1 md:grid-cols-3">
 
                     {/* Cột trái: Thẻ tóm tắt Widget Thành viên */}
                     <div className="bg-gradient-to-b from-slate-900 to-slate-800 text-white p-8 flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-slate-700">

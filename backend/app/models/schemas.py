@@ -50,10 +50,10 @@ class AddToCartRequest(BaseModel):
     quantity: int = 1
 
 class RemoveFromCartRequest(BaseModel):
-    productId: str
+    cartItemId: str
 
 class UpdateCartItemRequest(BaseModel):
-    productId: str
+    cartItemId: str
     quantity: int
 
 # ── Orders ────────────────────────────────────────

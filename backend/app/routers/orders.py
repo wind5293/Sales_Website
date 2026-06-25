@@ -1,57 +1,65 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 from datetime import datetime
 from app.models.schemas import CreateOrderRequest, UpdateOrderStatusRequest
 from app.services.firebase import get_db
 from fastapi.security import HTTPBearer
 from google.cloud import firestore
+from app.routers.auth import verify_token
 
 security = HTTPBearer()
  
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 db = get_db()
 
-def _get_user_id(authorization: str) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Thiếu token xác thực")
-    return authorization.split("Bearer ")[1].strip()
-
 @router.get("")
 def get_my_orders(
-    authorization: str = Header(...),
+    decoded_token: dict = Depends(verify_token),
     status: Optional[str] = Query(None),
     limit: int = Query(20, le=100),
-    _=Depends(security)
+    skip: int = Query(0, ge=0)
 ):
     """
     Lấy danh sách đơn hàng của user hiện tại.
     - status: pending | confirmed | shipped | delivered | cancelled
     """
-    user_id = _get_user_id(authorization)
+    user_id = decoded_token.get("uid")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
  
     query = db.collection("orders").where("userId", "==", user_id)
     if status:
         query = query.where("status", "==", status)
  
-    docs = query.order_by("createdAt", direction="DESCENDING").limit(limit).stream()
+    raw_docs = list(query.stream())
+    raw_docs.sort(
+        key=lambda d: d.to_dict().get("createdAt") or datetime.min,
+        reverse=True,
+    )
+    total = len(raw_docs)
+    paged_docs = raw_docs[skip: skip + limit]
  
     orders = []
-    for doc in docs:
+    for doc in paged_docs:
         o = doc.to_dict()
         o["id"] = doc.id
-        # Chuyển timestamp thành ISO string để JSON serialize được
         if hasattr(o.get("createdAt"), "isoformat"):
             o["createdAt"] = o["createdAt"].isoformat()
         if hasattr(o.get("updatedAt"), "isoformat"):
             o["updatedAt"] = o["updatedAt"].isoformat()
         orders.append(o)
  
-    return {"orders": orders, "total": len(orders)}
+    return {"orders": orders, "total": total}
 
 @router.get("/{order_id}")
-def get_order_detail(order_id: str, authorization: str = Header(...), _=Depends(security)):
+def get_order_detail(
+    order_id: str, 
+    decoded_token: dict = Depends(verify_token),
+):
     """Lấy chi tiết một đơn hàng. User chỉ được xem đơn của mình."""
-    user_id = _get_user_id(authorization)
+    user_id = decoded_token.get("uid")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
  
     doc = db.collection("orders").document(order_id).get()
     if not doc.exists:
@@ -72,7 +80,10 @@ def get_order_detail(order_id: str, authorization: str = Header(...), _=Depends(
     return order
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=Depends(security)):
+def create_order(
+    body: CreateOrderRequest, 
+    decoded_token: dict = Depends(verify_token),
+):
     """
     Tạo đơn hàng từ giỏ hàng hiện tại.
     Flow:
@@ -83,7 +94,9 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
       5. Trừ tồn kho (dùng Firestore transaction để an toàn)
       6. Xóa giỏ hàng
     """
-    user_id = _get_user_id(authorization)
+    user_id = decoded_token.get("uid")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
  
     # ── 1. Lấy giỏ hàng ──────────────────────────────────────────────────
     cart_items_ref = db.collection("carts").document(user_id).collection("items").stream()
@@ -173,7 +186,7 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
         "note": body.note or "",
  
         # Giá
-        "totalPrice": round(total_price, 2),
+        "itemsTotal": round(total_price, 2),
         "shippingFee": shipping_fee,
         "discountAmount": discount_amount,
         "voucherCode": voucher_info,
@@ -243,13 +256,18 @@ def create_order(body: CreateOrderRequest, authorization: str = Header(...), _=D
     }
     
 @router.patch("/{order_id}/cancel")
-def cancel_order(order_id: str, authorization: str = Header(...), _=Depends(security)):
+def cancel_order(
+    order_id: str, 
+    decoded_token: dict = Depends(verify_token),
+):
     """
     User tự huỷ đơn hàng.
     Chỉ huỷ được khi đơn còn ở trạng thái 'pending'.
     Tự động hoàn lại tồn kho.
     """
-    user_id = _get_user_id(authorization)
+    user_id = decoded_token.get("uid")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
  
     doc_ref = db.collection("orders").document(order_id)
     doc = doc_ref.get()

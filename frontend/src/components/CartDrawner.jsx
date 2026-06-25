@@ -133,7 +133,7 @@ const CartDrawer = () => {
                                                     {item.quantity}
                                                 </span>
                                                 <button
-                                                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                                    onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                                                     disabled={item.quantity >= item.stockQuantity}
                                                     className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
                                                 >
@@ -143,7 +143,7 @@ const CartDrawer = () => {
 
                                             {/* Xóa */}
                                             <button
-                                                onClick={() => removeItem(item.productId)}
+                                                onClick={() => removeItem(item.cartItemId)}
                                                 className="text-slate-300 hover:text-red-400 transition-colors p-1"
                                                 title="Xóa khỏi giỏ"
                                             >
