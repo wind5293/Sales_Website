@@ -105,15 +105,19 @@ const Profile = () => {
         setAlert({ type: '', message: '' });
 
         const token = localStorage.getItem('auth_token');
-        try {
-            // Gửi dữ liệu cập nhật lên backend
-            const token = await getAuth().currentUser.getIdToken();
+        if (!token) {
+            setAlert({ type: 'error', message: 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại!' });
+            setTimeout(() => navigate('/login'), 2000);
+            setSaving(false);
+            return;
+        }
 
+        try {
             await axios.patch('/api/users/me', {
                 name: formData.name,
                 dob: formData.dob,
                 gender: formData.gender,
-                address: formData.place,
+                place: formData.place,   // ← sửa: backend nhận "place", không phải "address"
                 tel: formData.tel
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -121,7 +125,6 @@ const Profile = () => {
 
             setAlert({ type: 'success', message: 'Cập nhật thông tin thành công!' });
 
-            // Cập nhật lại tên hiển thị ở LocalStorage nếu cần thiết cho Navbar cập nhật theo
             if (formData.name) {
                 localStorage.setItem('user_name', formData.name);
             }

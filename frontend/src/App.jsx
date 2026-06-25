@@ -17,6 +17,7 @@ import ChangePassword from "./pages/ChangePassword";
 
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
+    const [userId, setUserId] = useState(null)
     const navigate = useNavigate();
 
     const { openCart } = useCart();
@@ -24,7 +25,12 @@ const AppContent = () => {
     const checkLoginStatus = () => {
         const token = localStorage.getItem('auth_token');
         const savedUserName = localStorage.getItem('user_name');
+        const savedUserId = localStorage.getItem('user_data')
+            ? JSON.parse(localStorage.getItem('user_data')).uid
+            : null;
+
         setUser(token && savedUserName ? savedUserName : 'Welcome');
+        setUserId(token ? savedUserId : null);
     }
 
     useEffect(() => {
@@ -32,11 +38,14 @@ const AppContent = () => {
     }, []);
 
     const handleLoginSuccess = (username) => {
-        setUser(username);
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        setUser(localStorage.getItem('user_name') || username);
+        setUserId(userData.uid || null);
     }
 
     const handleLogoutSuccess = () => {
         setUser('Welcome');
+        setUserId(null);
         navigate('/');
     }
 
@@ -65,7 +74,15 @@ const AppContent = () => {
                 <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/search" element={<SearchPage />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route
+                    path="/product/:id"
+                    element={
+                        <ProductDetail
+                            currentUserId={userId}
+                            currentUserName={localStorage.getItem('user_name')}
+                        />
+                    }
+                />
                 <Route path="/category/:categoryId" element={<CategoryPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/profile" element={<Profile />} />

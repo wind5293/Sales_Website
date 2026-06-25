@@ -1,5 +1,11 @@
-from pydantic import BaseModel, Field
+import os
+
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
+
+SECRET_KEY = os.getenv("ADMIN_JWT_SECRET", "change-this-secret-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 12
 
 # ── Auth ──────────────────────────────────────────
 class LoginRequest(BaseModel):
@@ -11,13 +17,6 @@ class SignupRequest(BaseModel):
     password: str
     email: str
     tel: str
-
-class ProfileUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    dob: Optional[str] = None
-    gender: Optional[str] = None
-    place: Optional[str] = None
-    tel: Optional[str] = None
 
 # ── Products ──────────────────────────────────────
 class CreateProductRequest(BaseModel):
@@ -72,11 +71,11 @@ class UpdateOrderStatusRequest(BaseModel):
     
 # ── Users ────────────────────────────────────────
 class ProfileUpdateRequest(BaseModel):
-    username: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    dob: Optional[str] = None       # "YYYY-MM-DD"
-    address: Optional[str] = None
+    name: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = None
+    place: Optional[str] = None
+    tel: Optional[str] = None
     
 class ChangePasswordRequest(BaseModel):
     old_password: str
@@ -122,3 +121,15 @@ class UpdateReviewRequest(BaseModel):
     
 class UpdateReviewWithProduct(UpdateReviewRequest):
     product_id: str = Field(..., description="ID sản phẩm chứa review này")
+    
+# ─── Schemas ──────────────────────────────────────────────────────────────────
+
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+
+class AdminLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int = ACCESS_TOKEN_EXPIRE_HOURS * 3600
+    admin_info: dict

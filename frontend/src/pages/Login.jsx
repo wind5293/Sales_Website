@@ -37,6 +37,7 @@ export default function Login({ onNavigate, onLoginSuccess }) {
             const userData = response.data.user;
             localStorage.setItem('user_email', userData.email);
             localStorage.setItem('user_username', userData.username || 'Guest');
+            localStorage.setItem('user_name', userData.display_name || userData.full_name || userData.username || 'Guest');
             localStorage.setItem('user_data', JSON.stringify(userData));
             
             if (onLoginSuccess) {
