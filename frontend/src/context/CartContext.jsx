@@ -79,6 +79,11 @@ export const CartProvider = ({ children }) => {
 
     // Cập nhật số lượng
     const updateQuantity = async (cartItemId, quantity) => {
+
+        if (quantity < 1) {
+            console.warn("Số lượng tối thiểu là 1");
+            return;
+        }
         try {
             await axios.patch(
                 `/api/cart/item/${cartItemId}`,

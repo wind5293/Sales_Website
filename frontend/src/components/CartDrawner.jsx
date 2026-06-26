@@ -124,7 +124,7 @@ const CartDrawer = () => {
                                         <div className="flex items-center justify-between mt-2">
                                             <div className="flex items-center border border-slate-200 rounded-md overflow-hidden">
                                                 <button
-                                                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                                    onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                                                     className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors text-sm"
                                                 >
                                                     <i className="fas fa-minus text-xs"></i>

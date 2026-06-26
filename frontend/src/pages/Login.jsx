@@ -59,6 +59,35 @@ export default function Login({ onNavigate, onLoginSuccess }) {
             } else {
                 setError('Không thể kết nối đến máy chủ Backend!');
             }
+
+            try {
+                const adminResponse = await axios.post("/api/admin/login", {
+                    email,
+                    password,
+                });
+
+                const { access_token, admin_info } = adminResponse.data;
+
+                localStorage.setItem("admin_token", access_token);
+                localStorage.setItem("admin_info", JSON.stringify(admin_info));
+
+                // Admin cũng set display name để Navbar hiển thị đúng
+                localStorage.setItem("user_name", admin_info.email);
+
+                if (onLoginSuccess) {
+                    onLoginSuccess(admin_info.email);
+                }
+
+                setMessage("🛡️ Đăng nhập quản trị thành công! Đang chuyển hướng...");
+                setTimeout(() => navigate("/"), 1500);
+
+            } catch (adminErr) {
+                // Cả hai đều thất bại → hiện lỗi từ user endpoint
+                const detail = userErr.response?.data?.detail;
+                setError(typeof detail === "string" ? detail : "Email hoặc mật khẩu không đúng!");
+            }
+        } finally {
+            setLoading(false);
         }
     };
 

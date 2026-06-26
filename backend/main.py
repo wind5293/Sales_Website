@@ -1,34 +1,29 @@
 from dotenv import load_dotenv
-load_dotenv()  
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, products, cart, orders, users, review
+
+from app.api import router
 
 app = FastAPI(
-    title="Apple Store API",
-    description="Backend cho web bán hàng Apple",
-    version="1.0.0",
-    swagger_ui_parameters={"persistAuthorization": True}
+    title="Sales Website API",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# CORS — cho phép React frontend gọi API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Gắn các router
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(products.router)
-app.include_router(cart.router)
-app.include_router(orders.router)
-app.include_router(review.router)
+app.include_router(router)
 
-@app.get("/")
-def root():
-    return {"message": "Apple Store API đang chạy"}
+
+@app.get("/health", tags=["Health"])
+def health_check():
+    return {"status": "ok"}

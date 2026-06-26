@@ -52,6 +52,8 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
 
     const { totalItems, openCart, resetCart } = useCart();
 
+    const isAdmin = () => Boolean(localStorage.getItem("admin_token"));
+
     useEffect(() => {
         axios.get('/api/products/category/all')
             .then(res => setCategories(res.data.categories || []))
@@ -105,6 +107,9 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
         localStorage.removeItem('user_email');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
+
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_info');
 
         localStorage.clear();
         resetCart();
@@ -291,6 +296,22 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                                     <div className="px-4 py-2 border-b border-gray-100 mb-1">
                                         <p className="text-sm font-semibold text-gray-800 line-clamp-1">{username}</p>
                                     </div>
+
+                                    {isAdmin() && (
+                                        <>
+                                            <div
+                                                onClick={() => {
+                                                    setShowPopup(false);
+                                                    navigate("/admin");
+                                                }}
+                                                className="px-4 py-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-3 border-b border-amber-100"
+                                            >
+                                                <i className="fas fa-tachometer-alt w-4 text-center text-amber-500"></i>
+                                                <span className="font-semibold">Trang quản trị</span>
+                                                <i className="fas fa-arrow-right ml-auto text-[10px] text-amber-400"></i>
+                                            </div>
+                                        </>
+                                    )}
 
                                     {/* Các mục Menu */}
                                     {USER_MENU_ITEMS.map((item) => (

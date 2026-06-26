@@ -111,7 +111,7 @@ const Homepage = () => {
                                     {categories[0]?.name || 'iPhone'}
                                 </h3>
                                 <p className="text-xs text-amber-400 font-semibold mb-3">Giảm mạnh đến 20%</p>
-                                <a href="#products" className="text-xs font-bold border-b border-white pb-1 hover:text-[#fbbf24] hover:border-[#fbbf24]">
+                                <a href="/category/2eont9yiHhkiM6MCbJcn" className="text-xs font-bold border-b border-white pb-1 hover:text-[#fbbf24] hover:border-[#fbbf24]">
                                     Xem ngay
                                 </a>
                             </div>
@@ -126,7 +126,7 @@ const Homepage = () => {
                                     {categories[1]?.name || 'MacBook'}
                                 </h3>
                                 <p className="text-xs text-slate-600 mb-3">Hỗ trợ trả góp 0% lãi suất</p>
-                                <a href="#products" className="text-xs font-bold border-b border-[#1e293b] pb-1 hover:text-[#f59e0b]">
+                                <a href="/category/CUH0jeycZZfAkeo1mabs" className="text-xs font-bold border-b border-[#1e293b] pb-1 hover:text-[#f59e0b]">
                                     Khám phá
                                 </a>
                             </div>

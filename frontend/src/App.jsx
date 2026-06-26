@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { CartProvider, useCart } from "./context/CartContext";
 import CheckoutPage from "./pages/CheckoutPage";
 import CartDrawner from "./components/CartDrawner";
@@ -15,11 +15,15 @@ import Profile from "./pages/Profile";
 import AddressBook from "./pages/AddressBook";
 import ChangePassword from "./pages/ChangePassword";
 import Orders from "./pages/Orders";
+import AdminRoute from "./components/AdminRoute";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
     const [userId, setUserId] = useState(null)
     const navigate = useNavigate();
+    const location = useLocation();
+    const isAdmin = location.pathname.startsWith("/admin");
 
     const { openCart } = useCart();
 
@@ -60,12 +64,14 @@ const AppContent = () => {
 
     return (
         <div>
-            <Navbar
-                username={user}
-                onLogout={handleLogoutSuccess}
-                onSearch={handleSearchSubmit}
-                onCartClick={openCart}
-            />
+            {!isAdmin && (
+                <Navbar
+                    username={user}
+                    onLogout={handleLogoutSuccess}
+                    onSearch={handleSearchSubmit}
+                    onCartClick={openCart}
+                />
+            )}
 
             <CartDrawner />
 
@@ -89,9 +95,18 @@ const AppContent = () => {
                 <Route path="/profile/addresses" element={<AddressBook />} />
                 <Route path="/profile/change-password" element={<ChangePassword />} />
                 <Route path="/orders" element={<Orders />} />
+
+                <Route 
+                    path="/admin/*"
+                    element={
+                        <AdminRoute>
+                            <AdminDashboard />
+                        </AdminRoute>
+                    }    
+                />
             </Routes>
 
-            <Footer />
+            {!isAdmin && (<Footer />)}
         </div>
 
     );
