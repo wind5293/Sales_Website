@@ -10,8 +10,9 @@ export default function Login({ onNavigate, onLoginSuccess }) {
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [message, setMessage] = useState("")
-    const [error, setError] = useState("")
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const { fetchCart, resetCart } = useCart();
 
@@ -20,11 +21,14 @@ export default function Login({ onNavigate, onLoginSuccess }) {
         setMessage('');
         setError('');
 
-        if (!email.trim() || !password.trim()){
+        if (!email.trim() || !password.trim()) {
             setError('Vui lòng điền email và mật khẩu!')
             return;
         }
 
+        setLoading(true);
+
+        let userErr = null;
         try {
             const response = await axios.post('/api/auth/login', {
                 email: email,
@@ -39,7 +43,7 @@ export default function Login({ onNavigate, onLoginSuccess }) {
             localStorage.setItem('user_username', userData.username || 'Guest');
             localStorage.setItem('user_name', userData.display_name || userData.full_name || userData.username || 'Guest');
             localStorage.setItem('user_data', JSON.stringify(userData));
-            
+
             if (onLoginSuccess) {
                 onLoginSuccess(userData.username || 'Guest');
             }
@@ -50,43 +54,38 @@ export default function Login({ onNavigate, onLoginSuccess }) {
                 navigate('/');
             }, 2000);
 
-            console.log(response.data);
+            setLoading(false);
+            return;
 
-        } catch(err) {
-            if (err.response && err.response.data) {
-                const detail = err.response.data.detail;
-                setError(typeof detail === 'string' ? detail : 'Đăng nhập thất bại!');
-            } else {
-                setError('Không thể kết nối đến máy chủ Backend!');
+        } catch (err) {
+            userErr = err
+        }
+
+        try {
+            const adminResponse = await axios.post("/api/admin/login", {
+                email,
+                password,
+            });
+
+            const { access_token, admin_info } = adminResponse.data;
+
+            localStorage.setItem("admin_token", access_token);
+            localStorage.setItem("admin_info", JSON.stringify(admin_info));
+            localStorage.setItem("user_name", admin_info.email);
+
+            if (onLoginSuccess) {
+                onLoginSuccess(admin_info.email);
             }
 
-            try {
-                const adminResponse = await axios.post("/api/admin/login", {
-                    email,
-                    password,
-                });
+            setMessage("🛡️ Đăng nhập quản trị thành công! Đang chuyển hướng...");
+            setTimeout(() => navigate("/"), 1500);
 
-                const { access_token, admin_info } = adminResponse.data;
-
-                localStorage.setItem("admin_token", access_token);
-                localStorage.setItem("admin_info", JSON.stringify(admin_info));
-
-                // Admin cũng set display name để Navbar hiển thị đúng
-                localStorage.setItem("user_name", admin_info.email);
-
-                if (onLoginSuccess) {
-                    onLoginSuccess(admin_info.email);
-                }
-
-                setMessage("🛡️ Đăng nhập quản trị thành công! Đang chuyển hướng...");
-                setTimeout(() => navigate("/"), 1500);
-
-            } catch (adminErr) {
-                // Cả hai đều thất bại → hiện lỗi từ user endpoint
-                const detail = userErr.response?.data?.detail;
-                setError(typeof detail === "string" ? detail : "Email hoặc mật khẩu không đúng!");
-            }
-        } finally {
+        } catch (adminErr) {
+            // Cả hai đều thất bại → hiện lỗi từ user endpoint
+            const detail = userErr?.response?.data?.detail;
+            setError(typeof detail === "string" ? detail : "Email hoặc mật khẩu không đúng!");
+        }
+        finally {
             setLoading(false);
         }
     };
@@ -107,13 +106,13 @@ export default function Login({ onNavigate, onLoginSuccess }) {
                     <h1 className="text-2xl font-bold text-gray-900 mb-1 text-center">Đăng nhập</h1>
                     <p className="text-sm text-gray-500 mb-6 text-center">
                         Chưa có tài khoản?{" "}
-                        <a 
-                        href="#" 
-                        onClick={(e) => {
-                            e.preventDefault();
-                            navigate('/signup');
-                        }}
-                        className="font-semibold text-gray-900 hover:underline">
+                        <a
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                navigate('/signup');
+                            }}
+                            className="font-semibold text-gray-900 hover:underline">
                             Đăng ký ngay
                         </a>
                     </p>

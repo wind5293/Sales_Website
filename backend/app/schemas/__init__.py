@@ -209,3 +209,32 @@ class UpdateReviewRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     title: Optional[str] = Field(None, max_length=200)
     text: Optional[str] = Field(None, min_length=1, max_length=2000)
+    
+# ─── Coupon ──────────────────────────────────────────────────────────────────
+ 
+class ValidateCouponRequest(BaseModel):
+    voucherCode: str
+    orderTotal: float = Field(..., gt=0)
+ 
+ 
+class CreateCouponRequest(BaseModel):
+    code: str = Field(..., min_length=3, max_length=30)
+    discountPercent: Optional[float] = Field(None, ge=1, le=100)
+    discountAmount: Optional[float] = Field(None, gt=0)
+    validUntil: Optional[str] = None       # ISO date string, e.g. "2025-12-31"
+    maxUses: int = Field(default=100, ge=1)
+    minOrder: Optional[float] = Field(None, ge=0)
+ 
+ 
+class UpdateCouponRequest(BaseModel):
+    discountPercent: Optional[float] = Field(None, ge=1, le=100)
+    discountAmount: Optional[float] = Field(None, gt=0)
+    validUntil: Optional[str] = None
+    maxUses: Optional[int] = Field(None, ge=1)
+    minOrder: Optional[float] = None
+    isActive: Optional[bool] = None
+    
+# ─── Points ──────────────────────────────────────────────────────────────────
+ 
+class RedeemPointsRequest(BaseModel):
+    points_to_redeem: int = Field(..., gt=0)

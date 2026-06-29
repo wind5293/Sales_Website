@@ -16,6 +16,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from google.cloud import firestore
 
+
+from app.api.routes.points import compute_rank, log_points_transaction
 from app.core.config import SHIPPING_PRICES, VOUCHERS
 from app.core.firebase import get_db
 from app.core.security import get_uid, verify_admin_token, verify_token
@@ -32,6 +34,69 @@ def _serialize_order(doc) -> dict:
         if hasattr(o.get(field), "isoformat"):
             o[field] = o[field].isoformat()
     return o
+
+def apply_voucher_with_firestore(
+    db,
+    voucher_code: str,
+    order_total: float,
+    uid: str,
+) -> tuple[float, str | None]:
+    """
+    Tính discount_amount từ voucher code.
+    Ưu tiên: Firestore coupons → VOUCHERS config (hardcode).
+    Trả về (discount_amount, voucher_code_applied | None).
+    """
+ 
+    code = voucher_code.upper().strip()
+    discount_amount = 0
+    voucher_info = None
+ 
+    # Thử Firestore trước (coupons từ admin + points redeem)
+    coupon_doc = db.collection("coupons").document(code).get()
+    if coupon_doc.exists:
+        coupon = coupon_doc.to_dict()
+ 
+        is_valid = (
+            coupon.get("isActive", True)
+            and coupon.get("usedCount", 0) < coupon.get("maxUses", 1)
+            and order_total >= (coupon.get("minOrder") or 0)
+            and (
+                coupon.get("type") != "points_redeem"
+                or coupon.get("userId") == uid
+            )
+        )
+ 
+        if coupon.get("validUntil"):
+            expiry = coupon["validUntil"]
+            if not hasattr(expiry, "timestamp"):
+                expiry = datetime.fromisoformat(str(expiry))
+            if datetime.now() > expiry:
+                is_valid = False
+ 
+        if is_valid:
+            if coupon.get("discountPercent"):
+                discount_amount = round(order_total * coupon["discountPercent"] / 100)
+            elif coupon.get("discountAmount"):
+                discount_amount = min(float(coupon["discountAmount"]), order_total)
+            voucher_info = code
+ 
+            # Tăng usedCount
+            db.collection("coupons").document(code).update({
+                "usedCount": coupon.get("usedCount", 0) + 1
+            })
+            return discount_amount, voucher_info
+ 
+    # Fallback: VOUCHERS hardcode trong config
+    voucher = VOUCHERS.get(code)
+    if voucher and order_total >= voucher["minOrder"]:
+        discount_amount = (
+            round(order_total * voucher["percent"] / 100)
+            if voucher.get("percent")
+            else voucher.get("discount", 0)
+        )
+        voucher_info = code
+ 
+    return discount_amount, voucher_info
 
 
 # ─── User routes ──────────────────────────────────────────────────────────────
@@ -111,14 +176,9 @@ def create_order(body: CreateOrderRequest, decoded_token: dict = Depends(verify_
     shipping_fee = SHIPPING_PRICES.get(body.shippingMethod or "fast", 30000)
     discount_amount, voucher_info = 0, None
     if body.voucherCode:
-        voucher = VOUCHERS.get(body.voucherCode.upper())
-        if voucher and total_price >= voucher["minOrder"]:
-            discount_amount = (
-                round(total_price * voucher["percent"] / 100)
-                if voucher["percent"]
-                else voucher["discount"]
-            )
-            voucher_info = body.voucherCode.upper()
+        discount_amount, voucher_info = apply_voucher_with_firestore(
+            db, body.voucherCode, total_price, uid
+        )
 
     final_total = round(total_price + shipping_fee - discount_amount, 2)
 
@@ -175,6 +235,23 @@ def create_order(body: CreateOrderRequest, decoded_token: dict = Depends(verify_
     # 6. Xóa giỏ hàng
     for item in cart_items:
         db.collection("carts").document(uid).collection("items").document(item["id"]).delete()
+        
+    # 7. Tích điểm
+    points_earned = int(final_total // 100_000)
+    if points_earned > 0:
+        user_ref = db.collection("users").document(uid)
+        user_snap = user_ref.get()
+        if user_snap.exists:
+            user_data = user_snap.to_dict()
+            new_points = user_data.get("points", 0) + points_earned
+            new_rank = compute_rank(new_points)
+            user_ref.update({"points": new_points, "rank": new_rank})
+            log_points_transaction(
+                user_id=uid,
+                delta=points_earned,
+                reason=f"Tích điểm từ đơn hàng {order_id}",
+                order_id=order_id,
+            )
 
     return {
         "message": "Đặt hàng thành công",
@@ -186,6 +263,7 @@ def create_order(body: CreateOrderRequest, decoded_token: dict = Depends(verify_
         "status": "pending",
         "shippingMethod": body.shippingMethod,
         "paymentMethod": body.paymentMethod,
+        "pointsEarned": points_earned,
     }
 
 
@@ -214,41 +292,3 @@ def cancel_order(order_id: str, decoded_token: dict = Depends(verify_token)):
 
     ref.update({"status": "cancelled", "updatedAt": datetime.now()})
     return {"message": "Đã huỷ đơn hàng"}
-
-
-# ─── Admin routes ─────────────────────────────────────────────────────────────
-
-@router.get("/admin/all", tags=["Admin - Orders"])
-def admin_get_all_orders(
-    status: Optional[str] = Query(None),
-    limit: int = Query(50, le=200),
-    admin: dict = Depends(verify_admin_token),  # ← đã thêm auth
-):
-    query = db.collection("orders")
-    if status:
-        query = query.where("status", "==", status)
-    docs = query.order_by("createdAt", direction="DESCENDING").limit(limit).stream()
-    orders = [_serialize_order(doc) for doc in docs]
-    return {"orders": orders, "total": len(orders)}
-
-
-@router.patch("/admin/{order_id}/status", tags=["Admin - Orders"])
-def admin_update_order_status(
-    order_id: str,
-    body: UpdateOrderStatusRequest,
-    admin: dict = Depends(verify_admin_token),  # ← đã thêm auth
-):
-    valid = {"pending", "confirmed", "shipped", "delivered", "cancelled"}
-    if body.status not in valid:
-        raise HTTPException(status_code=400, detail=f"Trạng thái không hợp lệ. Chọn một trong: {', '.join(valid)}")
-
-    ref = db.collection("orders").document(order_id)
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Đơn hàng không tồn tại")
-
-    updates = {"status": body.status, "updatedAt": datetime.now()}
-    if body.status == "delivered":
-        updates["paymentStatus"] = "paid"
-
-    ref.update(updates)
-    return {"message": f"Đã cập nhật trạng thái thành '{body.status}'"}

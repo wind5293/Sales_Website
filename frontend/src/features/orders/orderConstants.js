@@ -15,7 +15,7 @@ export const STATUS_CONFIG = {
         border: "border-blue-200",
         dot: "bg-blue-400",
     },
-    shipped: {
+    shipping: {
         label: "Đang giao hàng",
         icon: "fas fa-shipping-fast",
         color: "text-purple-600",
@@ -25,7 +25,7 @@ export const STATUS_CONFIG = {
     },
     delivered: {
         label: "Đã giao hàng",
-        icon: "fas fa-box-check",
+        icon: "fas fa-check-circle",
         color: "text-green-600",
         bg: "bg-green-50",
         border: "border-green-200",

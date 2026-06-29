@@ -74,9 +74,9 @@ export default function Orders({ toast }) {
                                 {orders.map((o) => (
                                     <tr key={o.id} className="hover:bg-amber-50/30 transition-colors">
                                         <td className="px-4 py-3 font-mono text-xs text-gray-500">#{o.id?.slice(-8)}</td>
-                                        <td className="px-4 py-3 text-gray-700">{o.user_email || o.user_id || "—"}</td>
-                                        <td className="px-4 py-3 text-gray-500">{fmtDate(o.created_at)}</td>
-                                        <td className="px-4 py-3 text-right font-semibold text-gray-800">{fmtVND(o.total_amount)}</td>
+                                        <td className="px-4 py-3 text-gray-700">{o.user_email || o.recipientName || "—"}</td>
+                                        <td className="px-4 py-3 text-gray-500">{fmtDate(o.createdAt)}</td>
+                                        <td className="px-4 py-3 text-right font-semibold text-gray-800">{fmtVND(o.totalPrice)}</td>
                                         <td className="px-4 py-3 text-center"><Badge status={o.status} /></td>
                                         <td className="px-4 py-3 text-center">
                                             <button

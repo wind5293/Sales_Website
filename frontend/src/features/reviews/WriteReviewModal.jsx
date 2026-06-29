@@ -22,6 +22,12 @@ const WriteReviewModal = ({ productId, userId, userName, onClose, onSuccess }) =
         if (rating === 0) { setError("Vui lòng chọn số sao đánh giá."); return; }
         if (!text.trim()) { setError("Vui lòng nhập nội dung đánh giá."); return; }
 
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+            setError("Bạn cần đăng nhập để gửi đánh giá.");
+            return;
+        }
+
         setSubmitting(true);
         setError("");
         try {
@@ -31,11 +37,21 @@ const WriteReviewModal = ({ productId, userId, userName, onClose, onSuccess }) =
                 rating,
                 title: title || RATING_LABELS[rating],
                 text: text.trim(),
-            });
+            },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
             onSuccess?.();
             onClose();
         } catch (err) {
-            setError(err.response?.data?.detail || "Gửi đánh giá thất bại. Vui lòng thử lại.");
+            if (err.response?.status === 401) {
+                setError("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+            } else {
+                setError(err.response?.data?.detail || "Gửi đánh giá thất bại. Vui lòng thử lại.");
+            }
         } finally {
             setSubmitting(false);
         }

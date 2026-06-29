@@ -54,7 +54,7 @@ export default function Users({ toast }) {
             </h2>
 
             {loading ? <Spinner /> : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -79,8 +79,8 @@ export default function Users({ toast }) {
                                         <td className="px-4 py-3 text-right font-medium text-amber-600">{fmt(u.points)}</td>
                                         <td className="px-4 py-3 text-center">
                                             {u.is_banned
-                                                ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">Bị cấm</span>
-                                                : <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-600">Hoạt động</span>
+                                                ? <span className="px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-600">Bị cấm</span>
+                                                : <span className="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-600">Hoạt động</span>
                                             }
                                         </td>
                                         <td className="px-4 py-3 text-center">
@@ -90,13 +90,13 @@ export default function Users({ toast }) {
                                                         setEditModal(u.id);
                                                         setEditData({ is_banned: u.is_banned, rank: u.rank || "", points: u.points || 0 });
                                                     }}
-                                                    className="text-xs text-amber-600 hover:text-amber-700 border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-50 transition-colors"
+                                                    className="text-xs text-amber-600 hover:text-amber-700 px-2 py-1 hover:bg-amber-50 transition-colors"
                                                 >
                                                     <i className="fas fa-edit"></i>
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(u.id, u.email)}
-                                                    className="text-xs text-red-500 hover:text-red-600 border border-red-200 rounded-lg px-2 py-1 hover:bg-red-50 transition-colors"
+                                                    className="text-xs text-red-500 hover:text-red-600 px-2 py-1 hover:bg-red-50 transition-colors"
                                                 >
                                                     <i className="fas fa-trash"></i>
                                                 </button>

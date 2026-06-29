@@ -27,6 +27,13 @@ db = get_db()
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 
+cloudinary.config(
+    cloud_name="djyqd6syo",   # ← đổi
+    api_key="443735632612169",         # ← đổi
+    api_secret="Eel9HGb9pEDgNvqtl1lkqTeyIdI",   # ← đổi
+    secure=True,
+)
+
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -226,13 +233,6 @@ def delete_product(
 
 
 # ─── Image endpoints ───────────────────────────────────────────────────────────
-
-cloudinary.config(
-    cloud_name="djyqd6syo",   # ← đổi
-    api_key="443735632612169",         # ← đổi
-    api_secret="Eel9HGb9pEDgNvqtl1lkqTeyIdI",   # ← đổi
-    secure=True,
-)
 
 @router.post("/products/upload-image", summary="Upload ảnh lên Firebase Storage")
 async def upload_image(

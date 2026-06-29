@@ -52,13 +52,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
 
     const { totalItems, openCart, resetCart } = useCart();
 
-    const isAdmin = () => Boolean(localStorage.getItem("admin_token"));
-
-    useEffect(() => {
-        axios.get('/api/products/category/all')
-            .then(res => setCategories(res.data.categories || []))
-            .catch(() => { });
-    }, []);
+    const isAdmin = Boolean(localStorage.getItem("admin_token")) && username !== 'Welcome';
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -297,7 +291,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                                         <p className="text-sm font-semibold text-gray-800 line-clamp-1">{username}</p>
                                     </div>
 
-                                    {isAdmin() && (
+                                    {isAdmin && (
                                         <>
                                             <div
                                                 onClick={() => {
