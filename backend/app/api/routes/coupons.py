@@ -123,6 +123,63 @@ def create_coupon(body: CreateCouponRequest, decoded_token: dict = Depends(verif
     return {"message": f"Tạo mã '{code}' thành công", "coupon": data}
 
 
+@router.get("/available")
+def get_available_coupons(
+    order_total: float = Query(0, ge=0),
+    decoded_token: dict = Depends(verify_token),
+):
+    """
+    GET /api/coupons/available?order_total=5000000
+    Trả về danh sách voucher public đang hoạt động.
+    Truyền order_total để biết voucher nào user đủ điều kiện dùng.
+    """
+    uid = get_uid(decoded_token)
+    now = datetime.now()
+
+    docs = db.collection("coupons").stream()
+    result = []
+
+    for doc in docs:
+        c = doc.to_dict()
+
+        # Bỏ qua voucher cá nhân của người khác
+        if c.get("type") == "points_redeem" and c.get("userId") != uid:
+            continue
+
+        # Bỏ qua đã vô hiệu hóa
+        if not c.get("isActive", True):
+            continue
+
+        # Bỏ qua đã hết lượt
+        if c.get("usedCount", 0) >= c.get("maxUses", 1):
+            continue
+
+        # Kiểm tra hạn dùng
+        expired = False
+        if c.get("validUntil"):
+            expiry = c["validUntil"]
+            if not hasattr(expiry, "timestamp"):
+                expiry = datetime.fromisoformat(str(expiry))
+            if now > expiry:
+                expired = True
+
+        result.append({
+            "code": doc.id,
+            "discountPercent": c.get("discountPercent"),
+            "discountAmount": c.get("discountAmount"),
+            "minOrder": c.get("minOrder", 0),
+            "maxUses": c.get("maxUses"),
+            "usedCount": c.get("usedCount", 0),
+            "validUntil": c["validUntil"].isoformat() if hasattr(c.get("validUntil"), "isoformat") else c.get("validUntil"),
+            "isExpired": expired,
+            "canUse": not expired and order_total >= (c.get("minOrder") or 0),
+        })
+
+    # Sắp xếp: dùng được lên trước, sau đó theo discountPercent giảm dần
+    result.sort(key=lambda x: (not x["canUse"], -(x["discountPercent"] or 0)))
+    return {"coupons": result, "total": len(result)}
+
+
 @router.get("/admin")
 def list_coupons(
     limit: int = Query(50, le=200),

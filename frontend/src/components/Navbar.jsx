@@ -11,10 +11,6 @@ const CATEGORY_ICONS = {
     'AirPods': 'fas fa-headphones',
 };
 
-const CATEGORY_MENU_USER = {
-    'Tài khoản': 'fas '
-}
-
 const USER_MENU_ITEMS = [
     { 
         id: 'profile', 
@@ -53,6 +49,13 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const { totalItems, openCart, resetCart } = useCart();
 
     const isAdmin = Boolean(localStorage.getItem("admin_token")) && username !== 'Welcome';
+
+    useEffect(() => {
+        fetch('/api/products/category/all')
+            .then(r => r.json())
+            .then(data => setCategories(data.categories))
+            .catch(err => console.error('Lỗi load categories:', err));
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -218,7 +221,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                         {/* Cửa sổ Popup Địa điểm */}
                         {showLocation && (
                             <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-md shadow-xl py-2 z-50 border border-gray-100 max-h-64 overflow-y-auto">
-                                <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                <div className="px-3 py-2 text-xs font-bold text-gray-400 tracking-wider">
                                     Chọn tỉnh/thành phố
                                 </div>
                                 {locations.map((loc, index) => (

@@ -322,14 +322,14 @@ const SearchPage = () => {
                                     {activeFilterCount > 0 && (
                                         <button
                                             onClick={resetFilters}
-                                            className="px-5 py-2 border border-amber-400 text-amber-500 hover:bg-amber-50 font-semibold rounded-full text-sm transition-colors"
+                                            className="px-5 py-2 text-amber-500 hover:bg-amber-50 font-semibold text-sm transition-colors"
                                         >
                                             Xóa bộ lọc
                                         </button>
                                     )}
                                     <button
                                         onClick={() => { resetFilters(); navigate('/'); }}
-                                        className="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold rounded-full text-sm transition-colors"
+                                        className="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold text-sm transition-colors"
                                     >
                                         Về trang chủ
                                     </button>
@@ -375,7 +375,7 @@ const SearchPage = () => {
                         <SidebarContent />
                         <button
                             onClick={() => setSidebarOpen(false)}
-                            className="mt-6 w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold rounded-full text-sm transition-colors"
+                            className="mt-6 w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold rounded-xs text-sm transition-colors"
                         >
                             Xem {total} kết quả
                         </button>

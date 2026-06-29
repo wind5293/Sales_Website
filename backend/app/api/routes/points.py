@@ -51,11 +51,11 @@ def generate_voucher_code() -> str:
 
 def log_points_transaction(user_id: str, delta: int, reason: str, order_id: Optional[str] = None):
     db.collection("points_history").add({
-        "userId": user_id,
+        "user_id": user_id,
         "delta": delta,
         "reason": reason,
-        "orderId": order_id,
-        "createdAt": datetime.now(),
+        "order_id": order_id,
+        "created_at": datetime.now(),
     })
 
 
@@ -75,8 +75,8 @@ def get_user_points(decoded_token: dict = Depends(verify_token)):
 
     history_docs = (
         db.collection("points_history")
-        .where("userId", "==", uid)
-        .order_by("createdAt", direction="DESCENDING")
+        .where("user_id", "==", uid)
+        .order_by("created_at", direction="DESCENDING")
         .limit(10)
         .stream()
     )
@@ -161,8 +161,8 @@ def get_points_history(
 
     docs = (
         db.collection("points_history")
-        .where("userId", "==", uid)
-        .order_by("createdAt", direction="DESCENDING")
+        .where("user_id", "==", uid)
+        .order_by("created_at", direction="DESCENDING")
         .limit(limit)
         .stream()
     )
