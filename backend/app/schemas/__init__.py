@@ -27,6 +27,20 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
+# ─── Password strength ─────────────────────────────────────────────────────────
+ 
+PASSWORD_MIN_LENGTH = 8
+ 
+def validate_password_strength(password: str) -> str:
+    if len(password) < PASSWORD_MIN_LENGTH:
+        raise ValueError(f"Mật khẩu phải có ít nhất {PASSWORD_MIN_LENGTH} ký tự")
+    if not re.search(r"[A-Za-z]", password):
+        raise ValueError("Mật khẩu phải có ít nhất 1 chữ cái")
+    if not re.search(r"\d", password):
+        raise ValueError("Mật khẩu phải có ít nhất 1 chữ số")
+    return password
+
+
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
@@ -39,13 +53,18 @@ class SignupRequest(BaseModel):
     password: str
     email: str
     tel: str
+    
+    @field_validator("password")
+    @classmethod
+    def check_password_strength(cls, v):
+        return validate_password_strength(v)
 
 
 # ─── Admin Auth ───────────────────────────────────────────────────────────────
 
 class AdminLoginRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=1)
 
 
 class AdminLoginResponse(BaseModel):
@@ -174,7 +193,12 @@ class ProfileUpdateRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=PASSWORD_MIN_LENGTH)
+    
+    @field_validator("new_password")
+    @classmethod
+    def check_password_strength(cls, v):
+        return validate_password_strength(v)
 
 
 class AddressRequest(BaseModel):

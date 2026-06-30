@@ -6,6 +6,7 @@ POST /api/auth/signup  — đăng ký tài khoản mới
 """
 
 import httpx
+import logging
 from fastapi import APIRouter, HTTPException, status
 from firebase_admin import auth
 
@@ -15,6 +16,7 @@ from app.schemas import LoginRequest, SignupRequest
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 db = get_db()
+logger = logging.getLogger(__name__)
 
 _GENERIC_LOGIN_ERROR = "Email hoặc mật khẩu không đúng"
 
@@ -22,7 +24,6 @@ _GENERIC_LOGIN_ERROR = "Email hoặc mật khẩu không đúng"
 @router.post("/login", status_code=status.HTTP_200_OK)
 def login(body: LoginRequest):
     """Đăng nhập qua Firebase Auth REST API và trả về idToken."""
-    import os
     
     try:
         resp = httpx.post(
@@ -95,5 +96,11 @@ def signup(body: SignupRequest):
         }
     except auth.EmailAlreadyExistsError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email này đã được đăng ký")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Lỗi không xác định khi đăng ký user")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Đã có lỗi xảy ra, vui lòng thử lại sau",
+        )
