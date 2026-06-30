@@ -133,4 +133,9 @@ def get_product(product_id: str):
     doc = db.collection("products").document(product_id).get()
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
-    return {"id": doc.id, **doc.to_dict()}
+    
+    product_data = doc.to_dict()
+    if product_data.get("status") in ["hidden", "draft"]:
+        raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
+    
+    return {"id": doc.id, **product_data}

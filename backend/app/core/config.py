@@ -25,3 +25,7 @@ VOUCHERS: dict = {
     "FREESHIP": {"discount": 30000, "percent": None, "minOrder": 200000},
     "SALE10":   {"discount": None,  "percent": 10,   "minOrder": 300000},
 }
+
+CLOUDINARY_CLOUD_NAME: str = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY: str = os.environ.get("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET: str = os.environ.get("CLOUDINARY_API_SECRET", "")

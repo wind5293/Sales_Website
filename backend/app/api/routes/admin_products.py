@@ -20,6 +20,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from app.core.firebase import get_db
 from app.core.security import verify_admin_token
 from app.schemas import CreateProductRequest, UpdateProductRequest, slugify
+from app.core.config import CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME
+
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Products"])
 db = get_db()
@@ -28,12 +30,11 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 
 cloudinary.config(
-    cloud_name="djyqd6syo",   # ← đổi
-    api_key="443735632612169",         # ← đổi
-    api_secret="Eel9HGb9pEDgNvqtl1lkqTeyIdI",   # ← đổi
+    cloud_name=CLOUDINARY_CLOUD_NAME, 
+    api_key=CLOUDINARY_API_KEY,      
+    api_secret=CLOUDINARY_API_SECRET, 
     secure=True,
 )
-
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 

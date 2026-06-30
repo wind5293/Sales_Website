@@ -23,8 +23,6 @@ _GENERIC_LOGIN_ERROR = "Email hoặc mật khẩu không đúng"
 def login(body: LoginRequest):
     """Đăng nhập qua Firebase Auth REST API và trả về idToken."""
     import os
-    print("API KEY:", os.environ.get("FIREBASE_WEB_API_KEY", "MISSING"))
-    print("SIGN IN URL:", FIREBASE_SIGN_IN_URL)
     
     try:
         resp = httpx.post(

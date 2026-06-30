@@ -20,17 +20,6 @@ import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import { isTokenExpired, clearAuthData } from "./utils/auth";
 
-axios.interceptors.response.use(
-    res => res,
-    err => {
-        if (err.response?.status === 401) {
-            clearAuthData();
-            window.location.href = '/login';
-        }
-        return Promise.reject(err);
-    }
-);
-
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
     const [userId, setUserId] = useState(null)
