@@ -126,7 +126,7 @@ const ChangePassword = () => {
 
                 {/* Alert */}
                 {alert.message && (
-                    <div className={`mb-6 p-4 rounded-md flex items-center gap-3 text-sm font-medium ${alert.type === 'success'
+                    <div className={`mb-6 p-4 rounded-xs flex items-center gap-3 text-sm font-medium ${alert.type === 'success'
                         ? 'bg-green-50 text-green-700 border border-green-200'
                         : 'bg-red-50 text-red-700 border border-red-200'}`}>
                         <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
@@ -134,12 +134,12 @@ const ChangePassword = () => {
                     </div>
                 )}
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden grid grid-cols-1 md:grid-cols-3">
+                <div className="bg-white rounded-xs border border-slate-100 overflow-hidden grid grid-cols-1 md:grid-cols-3">
 
                     {/* Cột trái: mô tả bảo mật */}
                     <div className="bg-gradient-to-b from-slate-900 to-slate-800 text-white p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-700">
                         <div>
-                            <div className="w-14 h-14 bg-amber-500/20 border border-amber-500/30 rounded-xl flex items-center justify-center mb-6">
+                            <div className="w-14 h-14 bg-amber-500/20 border border-amber-500/30 rounded-xs flex items-center justify-center mb-6">
                                 <i className="fas fa-lock text-amber-400 text-xl"></i>
                             </div>
                             <h2 className="text-xl font-bold tracking-wide mb-2">Đổi mật khẩu</h2>
@@ -153,7 +153,7 @@ const ChangePassword = () => {
                                     { icon: 'fa-check', text: 'Có ký tự đặc biệt (!@#$…)' },
                                 ].map((tip, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm">
-                                        <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] ${form.new_password && (
+                                        <span className={`w-4 h-4 rounded-xs flex items-center justify-center flex-shrink-0 text-[9px] ${form.new_password && (
                                                 (i === 0 && form.new_password.length >= 8) ||
                                                 (i === 1 && /[A-Z]/.test(form.new_password) && /[a-z]/.test(form.new_password)) ||
                                                 (i === 2 && /[0-9]/.test(form.new_password)) ||
@@ -228,7 +228,7 @@ const ChangePassword = () => {
                                                 {[1, 2, 3, 4].map(i => (
                                                     <div
                                                         key={i}
-                                                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= strength.level ? strength.color : 'bg-slate-200'}`}
+                                                        className={`h-1 flex-1 transition-all duration-300 ${i <= strength.level ? strength.color : 'bg-slate-200'}`}
                                                     />
                                                 ))}
                                             </div>

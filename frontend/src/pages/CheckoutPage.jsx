@@ -41,6 +41,8 @@ const CheckoutPage = () => {
     const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [wantInvoice, setWantInvoice] = useState(false);
+    const [addresses, setAddresses] = useState([]);
+    const [showAddressModal, setShowAddressModal] = useState(false);
 
     const discountAmount = appliedVoucher?.discountAmount ?? 0;
     const finalTotal = totalPrice + shipping.price - discountAmount;
@@ -53,6 +55,26 @@ const CheckoutPage = () => {
         if (!form.address.trim()) e.address = 'Vui lòng nhập địa chỉ';
         return e;
     };
+
+    useEffect(() => {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        axios.get('/api/users/addresses', {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(res => {
+            const list = res.data.addresses || [];
+            setAddresses(list);
+            const def = list.find(a => a.is_default) || list[0];
+            if (def) {
+                setForm({
+                    name: def.name || '',
+                    phone: def.phone || '',
+                    address: [def.street, def.district, def.city]
+                        .filter(Boolean).join(', '),
+                });
+            }
+        }).catch(() => { });
+    }, []);
 
     useEffect(() => {
         if (!showVoucherModal) return;
@@ -150,7 +172,7 @@ const CheckoutPage = () => {
         } catch (err) {
             setErrors({ submit: err.response?.data?.detail || 'Đặt hàng thất bại. Vui lòng thử lại.' });
         } finally {
-            setLoading(false);
+            setLoading(false);  
         }
     };
 
@@ -162,28 +184,55 @@ const CheckoutPage = () => {
                     <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-100">
                         <i className="fas fa-check-circle text-5xl text-amber-400"></i>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Đặt hàng thành công!</h1>
-                    <p className="text-slate-500 text-sm mb-8">Cảm ơn bạn đã mua hàng tại <span className="text-[#f59e0b] font-semibold">electro.</span></p>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-1">
+                        Đặt hàng thành công!
+                    </h1>
+                    <p className="text-slate-500 text-sm mb-8">
+                        Cảm ơn bạn đã mua hàng tại
+                        <span className="text-[#f59e0b] font-semibold">
+                            electro.
+                        </span>
+                    </p>
                     <div className="bg-[#fafafa] border border-slate-200 rounded-sm p-5 mb-6 text-left divide-y divide-dashed divide-slate-200 space-y-3">
                         <div className="flex justify-between text-sm pb-3">
-                            <span className="text-slate-500">Mã đơn hàng</span>
-                            <span className="font-mono font-bold text-slate-800 text-xs tracking-wider">#{orderSuccess.orderId.slice(-10).toUpperCase()}</span>
+                            <span className="text-slate-500">
+                                Mã đơn hàng
+                            </span>
+                            <span className="font-mono font-bold text-slate-800 text-xs tracking-wider">
+                                #{orderSuccess.orderId.slice(-10).toUpperCase()}
+                            </span>
                         </div>
                         <div className="flex justify-between text-sm pt-3">
-                            <span className="text-slate-500">Phương thức thanh toán</span>
-                            <span className="font-semibold text-slate-700">{paymentMethod.label}</span>
+                            <span className="text-slate-500">
+                                Phương thức thanh toán
+                            </span>
+                            <span className="font-semibold text-slate-700">
+                                {paymentMethod.label}
+                            </span>
                         </div>
                         <div className="flex justify-between text-sm pt-3">
-                            <span className="text-slate-500">Dự kiến giao hàng</span>
-                            <span className="font-semibold text-green-600">{shipping.eta}</span>
+                            <span className="text-slate-500">
+                                Dự kiến giao hàng
+                            </span>
+                            <span className="font-semibold text-green-600">
+                                {shipping.eta}
+                            </span>
                         </div>
                         <div className="flex justify-between text-sm pt-3">
-                            <span className="text-slate-500">Trạng thái</span>
-                            <span className="text-amber-700 text-sm font-bold">Chờ xác nhận</span>
+                            <span className="text-slate-500">
+                                Trạng thái
+                            </span>
+                            <span className="text-amber-700 text-sm font-bold">
+                                Chờ xác nhận
+                            </span>
                         </div>
                         <div className="flex justify-between items-center pt-3">
-                            <span className="font-bold text-slate-700">Tổng thanh toán</span>
-                            <span className="text-2xl font-bold text-[#f59e0b]">{formatPrice(orderSuccess.totalPrice)}</span>
+                            <span className="font-bold text-slate-700">
+                                Tổng thanh toán
+                            </span>
+                            <span className="text-2xl font-bold text-[#f59e0b]">
+                                {formatPrice(orderSuccess.totalPrice)}
+                            </span>
                         </div>
                     </div>
                     <Link to="/" className="block w-full bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold py-3 rounded-sm text-sm text-center transition-colors">
@@ -199,8 +248,12 @@ const CheckoutPage = () => {
             <div className="bg-[#f5f5f5] min-h-screen flex items-center justify-center px-4">
                 <div className="text-center bg-white p-12 rounded-sm shadow">
                     <i className="fas fa-shopping-cart text-5xl text-slate-200 mb-4 block"></i>
-                    <p className="font-semibold text-slate-600 mb-5">Giỏ hàng của bạn đang trống</p>
-                    <Link to="/" className="bg-[#f59e0b] hover:bg-[#d97706] text-white font-semibold text-sm px-8 py-3 rounded-sm transition-colors inline-block">Mua ngay</Link>
+                    <p className="font-semibold text-slate-600 mb-5">
+                        Giỏ hàng của bạn đang trống
+                    </p>
+                    <Link to="/" className="bg-[#f59e0b] hover:bg-[#d97706] text-white font-semibold text-sm px-8 py-3 rounded-sm transition-colors inline-block">
+                        Mua ngay
+                    </Link>
                 </div>
             </div>
         );
@@ -216,7 +269,9 @@ const CheckoutPage = () => {
                     Trang chủ
                 </Link>
                 <i className="fas fa-chevron-right text-[9px] text-slate-300"></i>
-                <span className="text-slate-600 font-medium">Thanh toán</span>
+                <span className="text-slate-600 font-medium">
+                    Thanh toán
+                </span>
             </div>
 
             <div className="max-w-5xl mx-auto px-4 py-6">
@@ -225,32 +280,57 @@ const CheckoutPage = () => {
 
                     {/* ── 1. Địa chỉ nhận hàng ── */}
                     <div className="px-6 py-6">
-                        <h2 className="text-[#f59e0b] font-semibold text-base mb-4 flex items-center gap-2">
-                            <i className="fas fa-map-marker-alt"></i> Địa Chỉ Nhận Hàng
+                        <h2 className="text-[#f59e0b] font-semibold text-base mb-4 flex items-center justify-between">
+                            <span><i className="fas fa-map-marker-alt mr-2"></i>Địa chỉ nhận hàng</span>
+                            {addresses.length > 0 && (
+                                <button
+                                    onClick={() => setShowAddressModal(true)}
+                                    className="text-xs font-normal text-[#f59e0b] hover:underline border border-amber-200 px-2 py-1"
+                                >
+                                    <i className="fas fa-book mr-1"></i>Chọn từ sổ địa chỉ
+                                </button>
+                            )}
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Họ và tên</label>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">
+                                    Họ và tên
+                                </label>
                                 <input name="name" value={form.name}
-                                    onChange={e => { setForm(p => ({ ...p, name: e.target.value })); setErrors(p => ({ ...p, name: '' })); }}
+                                    onChange={e => {
+                                        setForm(p => ({ ...p, name: e.target.value }));
+                                        setErrors(p => ({ ...p, name: '' }));
+                                    }}
                                     placeholder="Nguyễn Văn A"
                                     className={`w-full border px-3 py-2 text-sm focus:outline-none focus:border-[#f59e0b] ${errors.name ? 'border-red-400' : 'border-slate-300'}`}
                                 />
-                                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                                {errors.name && <p className="text-red-500 text-xs mt-1">
+                                    {errors.name}
+                                </p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Số điện thoại</label>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">
+                                    Số điện thoại
+                                </label>
                                 <input name="phone" value={form.phone} type="tel"
-                                    onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setErrors(p => ({ ...p, phone: '' })); }}
-                                    placeholder="0909 123 456"
+                                    onChange={e => {
+                                        setForm(p => ({ ...p, phone: e.target.value }));
+                                        setErrors(p => ({ ...p, phone: '' }));
+                                    }}
+                                    placeholder="0123 456 789"
                                     className={`w-full border px-3 py-2 text-sm focus:outline-none focus:border-[#f59e0b] ${errors.phone ? 'border-red-400' : 'border-slate-300'}`}
                                 />
                                 {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Địa chỉ nhận hàng</label>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">
+                                    Địa chỉ nhận hàng
+                                </label>
                                 <input name="address" value={form.address}
-                                    onChange={e => { setForm(p => ({ ...p, address: e.target.value })); setErrors(p => ({ ...p, address: '' })); }}
+                                    onChange={e => {
+                                        setForm(p => ({ ...p, address: e.target.value }));
+                                        setErrors(p => ({ ...p, address: '' }));
+                                    }}
                                     placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
                                     className={`w-full border px-3 py-2 text-sm focus:outline-none focus:border-[#f59e0b] ${errors.address ? 'border-red-400' : 'border-slate-300'}`}
                                 />
@@ -264,7 +344,7 @@ const CheckoutPage = () => {
                     {/* ── 2. Sản phẩm ── */}
                     <div>
                         {/* Header bảng */}
-                        <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wide">
+                        <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-100 text-xs text-slate-400 tracking-wide">
                             <div className="col-span-6">Sản phẩm</div>
                             <div className="col-span-2 text-center">Đơn giá</div>
                             <div className="col-span-2 text-center">Số lượng</div>
@@ -465,7 +545,7 @@ const CheckoutPage = () => {
                                     value={voucherInput}
                                     onChange={e => { setVoucherInput(e.target.value.toUpperCase()); setVoucherError(''); }}
                                     placeholder="Nhập mã voucher"
-                                    className="flex-1 border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-[#f59e0b] uppercase"
+                                    className="flex-1 border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-[#f59e0b]"
                                 />
                                 <button
                                     onClick={handleApplyVoucher}
@@ -542,6 +622,57 @@ const CheckoutPage = () => {
                                     })
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAddressModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+                    <div className="bg-white shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+                            <h3 className="font-bold text-slate-800">Chọn địa chỉ giao hàng</h3>
+                            <button onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div className="overflow-y-auto flex-1 p-5 space-y-3">
+                            {addresses.map((addr) => (
+                                <div
+                                    key={addr.address_id}
+                                    onClick={() => {
+                                        setForm({
+                                            name: addr.name || '',
+                                            phone: addr.phone || '',
+                                            address: [addr.street, addr.district, addr.city]
+                                                .filter(Boolean).join(', '),
+                                        });
+                                        setErrors({});
+                                        setShowAddressModal(false);
+                                    }}
+                                    className="border border-slate-200 p-4 cursor-pointer hover:border-[#f59e0b] hover:bg-amber-50 transition-colors relative"
+                                >
+                                    {addr.is_default && (
+                                        <span className="absolute top-3 right-3 text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5">
+                                            Mặc định
+                                        </span>
+                                    )}
+                                    <p className="font-semibold text-slate-800 text-sm pr-16">{addr.name}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">{addr.phone}</p>
+                                    <p className="text-xs text-slate-600 mt-1">
+                                        {[addr.street, addr.district, addr.city].filter(Boolean).join(', ')}
+                                    </p>
+                                </div>
+                            ))}
+
+                            <button
+                                onClick={() => { setShowAddressModal(false); navigate('/profile/addresses'); }}
+                                className="w-full border border-dashed border-slate-300 p-4 text-sm text-slate-500 hover:border-[#f59e0b] hover:text-[#f59e0b] transition-colors flex items-center justify-center gap-2"
+                            >
+                                <i className="fas fa-plus"></i>
+                                Thêm địa chỉ mới
+                            </button>
                         </div>
                     </div>
                 </div>

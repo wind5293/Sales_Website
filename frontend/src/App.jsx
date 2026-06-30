@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 import { CartProvider, useCart } from "./context/CartContext";
 import CheckoutPage from "./pages/CheckoutPage";
 import CartDrawner from "./components/CartDrawner";
@@ -17,6 +18,18 @@ import ChangePassword from "./pages/ChangePassword";
 import Orders from "./pages/Orders";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import { isTokenExpired, clearAuthData } from "./utils/auth";
+
+axios.interceptors.response.use(
+    res => res,
+    err => {
+        if (err.response?.status === 401) {
+            clearAuthData();
+            window.location.href = '/login';
+        }
+        return Promise.reject(err);
+    }
+);
 
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
@@ -39,7 +52,25 @@ const AppContent = () => {
     }
 
     useEffect(() => {
-        checkLoginStatus();
+        const checkToken = () => {
+            const token = localStorage.getItem('auth_token');
+            if (isTokenExpired(token)) {
+                clearAuthData();
+                setUser('Welcome');
+                setUserId(null);
+                return;
+            }
+            const savedUserName = localStorage.getItem('user_name');
+            const savedUserId = localStorage.getItem('user_data')
+                ? JSON.parse(localStorage.getItem('user_data')).uid
+                : null;
+            setUser(savedUserName || 'Welcome');
+            setUserId(savedUserId);
+        };
+
+        checkToken();
+        const interval = setInterval(checkToken, 60 * 1000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleLoginSuccess = (username) => {

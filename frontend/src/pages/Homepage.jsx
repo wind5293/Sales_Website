@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import ProductCard from '../components/ProductCard';
@@ -17,14 +17,14 @@ const Homepage = () => {
         const fetchData = async () => {
             try {
                 // Lấy sản phẩm (mặc định status=active, limit=8)
-                const res = await axios.get('/api/products?limit=8');
+                const res = await axios.get('/api/products?limit=100');
                 const allProducts = res.data.products;
                 setProducts(allProducts);
 
-                // Lấy sản phẩm đầu tiên làm hero banner
-                if (allProducts.length > 0) {
-                    setHeroProduct(allProducts[0]);
-                }
+                const deepestDiscount = [...allProducts]
+                    .filter(p => p.discountPercent > 0)
+                    .sort((a, b) => b.discountPercent - a.discountPercent)[0];
+                setHeroProduct(deepestDiscount || allProducts[0]);
 
                 // Lấy danh mục
                 const catRes = await axios.get('/api/products/category/all');
@@ -54,8 +54,22 @@ const Homepage = () => {
     };
 
     const filteredProducts = getFilteredProducts();
-    // Nếu tab không có sản phẩm nào, hiển thị tất cả
-    const displayProducts = filteredProducts.length > 0 ? filteredProducts : products;
+    const tabProducts = useMemo(() => {
+        const base = filteredProducts.length > 0 ? filteredProducts : products;
+
+        if (activeTab === 'featured') {
+            return [...base]
+                .filter(p => p.discountPercent > 0)
+                .sort((a, b) => b.discountPercent - a.discountPercent)
+                .slice(0, 8);
+        }
+        if (activeTab === 'sale') {
+            return base.filter(p => p.discountPercent > 0);
+        }
+        return base; // 'all'
+    }, [activeTab, products, filteredProducts]);
+
+    const displayProducts = tabProducts;
 
     return (
         <div className="bg-slate-50 min-h-screen font-sans">
