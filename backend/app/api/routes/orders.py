@@ -10,22 +10,25 @@ GET    /api/orders/admin/all               — [Admin] Toàn bộ đơn hàng
 PATCH  /api/orders/admin/{id}/status       — [Admin] Cập nhật trạng thái
 """
 
+import logging
+
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from google.cloud import firestore
-
+from firebase_admin import firestore
 
 from app.api.routes.points import compute_rank, log_points_transaction
 from app.core.config import SHIPPING_PRICES, VOUCHERS
 from app.core.firebase import get_db
 from app.core.security import get_uid, verify_admin_token, verify_token
 from app.schemas import CreateOrderRequest, UpdateOrderStatusRequest
+from app.core.inventory import restock_order_items
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 db = get_db()
-
+logger = logging.getLogger(__name__)
 
 def _serialize_order(doc) -> dict:
     o = doc.to_dict()
@@ -34,6 +37,26 @@ def _serialize_order(doc) -> dict:
         if hasattr(o.get(field), "isoformat"):
             o[field] = o[field].isoformat()
     return o
+
+
+def _release_voucher(code: str):
+    ref = db.collection("coupons").document(code.upper().strip())
+    transaction = db.transaction()
+
+    @firestore.transactional
+    def _release(transaction, ref):
+        snap = ref.get(transaction=transaction)
+        if not snap.exists:
+            return
+        c = snap.to_dict()
+        new_used = max(0, c.get("usedCount", 0) - 1)
+        transaction.update(ref, {"usedCount": new_used})
+
+    try:
+        _release(transaction, ref)
+    except Exception:
+        logger.exception(f"Không thể hoàn lại voucher {code} sau khi đơn hàng tạo thất bại")
+
 
 def apply_voucher_with_firestore(
     db,
@@ -79,11 +102,25 @@ def apply_voucher_with_firestore(
             elif coupon.get("discountAmount"):
                 discount_amount = min(float(coupon["discountAmount"]), order_total)
             voucher_info = code
- 
-            # Tăng usedCount
-            db.collection("coupons").document(code).update({
-                "usedCount": coupon.get("usedCount", 0) + 1
-            })
+
+            coupon_ref = db.collection("coupons").document(code)
+            transaction = db.transaction()
+
+            @firestore.transactional
+            def _consume_coupon(transaction, ref):
+                snap = ref.get(transaction=transaction)
+                c = snap.to_dict()
+                if (
+                    not c.get("isActive", True)
+                    or c.get("usedCount", 0) >= c.get("maxUses", 1)
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Mã giảm giá đã hết lượt sử dụng",
+                    )
+                transaction.update(ref, {"usedCount": c.get("usedCount", 0) + 1})
+
+            _consume_coupon(transaction, coupon_ref)
             return discount_amount, voucher_info
  
     # Fallback: VOUCHERS hardcode trong config
@@ -230,6 +267,8 @@ def create_order(body: CreateOrderRequest, decoded_token: dict = Depends(verify_
         _decrement_stock(transaction, order_items)
     except Exception as e:
         db.collection("orders").document(order_id).delete()
+        if voucher_info:
+            _release_voucher(voucher_info)
         raise HTTPException(status_code=400, detail=f"Lỗi cập nhật tồn kho: {str(e)}")
 
     # 6. Xóa giỏ hàng
@@ -240,12 +279,21 @@ def create_order(body: CreateOrderRequest, decoded_token: dict = Depends(verify_
     points_earned = int(final_total // 100_000)
     if points_earned > 0:
         user_ref = db.collection("users").document(uid)
-        user_snap = user_ref.get()
-        if user_snap.exists:
-            user_data = user_snap.to_dict()
+        transaction = db.transaction()
+
+        @firestore.transactional
+        def _add_points(transaction, ref):
+            snap = ref.get(transaction=transaction)
+            if not snap.exists:
+                return None
+            user_data = snap.to_dict()
             new_points = user_data.get("points", 0) + points_earned
             new_rank = compute_rank(new_points)
-            user_ref.update({"points": new_points, "rank": new_rank})
+            transaction.update(ref, {"points": new_points, "rank": new_rank})
+            return new_points, new_rank
+
+        result = _add_points(transaction, user_ref)
+        if result is not None:
             log_points_transaction(
                 user_id=uid,
                 delta=points_earned,
@@ -283,12 +331,7 @@ def cancel_order(order_id: str, decoded_token: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail=f"Không thể huỷ đơn ở trạng thái '{order.get('status')}'")
 
     # Hoàn lại tồn kho
-    for item in order.get("items", []):
-        product_ref = db.collection("products").document(item["productId"])
-        snap = product_ref.get()
-        if snap.exists:
-            new_stock = snap.to_dict().get("stockQuantity", 0) + item["quantity"]
-            product_ref.update({"stockQuantity": new_stock, "status": "active", "updatedAt": datetime.now()})
+    restock_order_items(db, order.get("items", []))
 
     ref.update({"status": "cancelled", "updatedAt": datetime.now()})
     return {"message": "Đã huỷ đơn hàng"}

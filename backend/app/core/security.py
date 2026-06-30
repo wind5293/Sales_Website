@@ -17,9 +17,10 @@ from firebase_admin import auth
 from jose import JWTError, jwt
 
 from app.core.config import ACCESS_TOKEN_EXPIRE_HOURS, ALGORITHM, SECRET_KEY
+from app.core.firebase import get_db
 
 _bearer = HTTPBearer()
-
+db = get_db()
 
 # ── Firebase user token ───────────────────────────────────────────────────────
 
@@ -28,12 +29,23 @@ def verify_token(
 ) -> dict:
     """Xác thực Firebase ID Token. Dùng cho tất cả user routes."""
     try:
-        return auth.verify_id_token(credentials.credentials)
+        decoded_token = auth.verify_id_token(credentials.credentials)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token hết hạn hoặc không hợp lệ",
         )
+        
+    uid = decoded_token.get("uid")
+    if uid:
+        user_doc = db.collection("users").document(uid).get()
+        if user_doc.exists and user_doc.to_dict().get("is_banned"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tài khoản của bạn đã bị khóa",
+            )
+
+    return decoded_token
 
 
 def get_uid(decoded_token: dict) -> str:

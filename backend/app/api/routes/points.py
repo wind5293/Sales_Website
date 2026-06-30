@@ -12,6 +12,7 @@ import random
 import string
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from firebase_admin import firestore
 
 from app.core.firebase import get_db
 from app.core.security import get_uid, verify_token
@@ -99,43 +100,51 @@ def get_user_points(decoded_token: dict = Depends(verify_token)):
 @router.post("/redeem-points")
 def redeem_points(body: RedeemPointsRequest, decoded_token: dict = Depends(verify_token)):
     uid = get_uid(decoded_token)
-
     user_ref = db.collection("users").document(uid)
-    user_doc = user_ref.get()
-    if not user_doc.exists:
-        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
-
-    user_data = user_doc.to_dict()
-    current_points = user_data.get("points", 0)
-
-    if body.points_to_redeem > current_points:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Không đủ điểm. Bạn có {current_points} điểm, cần {body.points_to_redeem} điểm.",
-        )
-
+    
     discount_amount = body.points_to_redeem * POINTS_TO_VND
     voucher_code = generate_voucher_code()
-    new_points = current_points - body.points_to_redeem
-    new_rank = compute_rank(new_points)
 
-    # Tạo voucher trong Firestore (tương thích với VOUCHERS trong config)
-    db.collection("coupons").document(voucher_code).set({
-        "code": voucher_code,
-        "type": "points_redeem",
-        "discountAmount": discount_amount,
-        "discountPercent": None,
-        "userId": uid,
-        "isUsed": False,
-        "maxUses": 1,
-        "usedCount": 0,
-        "minOrder": 0,
-        "validUntil": None,
-        "isActive": True,
-        "createdAt": datetime.now(),
-    })
+    transaction = db.transaction()
 
-    user_ref.update({"points": new_points, "rank": new_rank})
+    @firestore.transactional
+    def _redeem(transaction):
+        user_snap = user_ref.get(transaction=transaction)
+        if not user_snap.exists:
+            raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+
+        user_data = user_snap.to_dict()
+        current_points = user_data.get("points", 0)
+
+        if body.points_to_redeem > current_points:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Không đủ điểm. Bạn có {current_points} điểm, cần {body.points_to_redeem} điểm.",
+            )
+
+        new_points = current_points - body.points_to_redeem
+        new_rank = compute_rank(new_points)
+
+        voucher_ref = db.collection("coupons").document(voucher_code)
+        transaction.set(voucher_ref, {
+            "code": voucher_code,
+            "type": "points_redeem",
+            "discountAmount": discount_amount,
+            "discountPercent": None,
+            "userId": uid,
+            "isUsed": False,
+            "maxUses": 1,
+            "usedCount": 0,
+            "minOrder": 0,
+            "validUntil": None,
+            "isActive": True,
+            "createdAt": datetime.now(),
+        })
+        transaction.update(user_ref, {"points": new_points, "rank": new_rank})
+
+        return new_points, new_rank
+
+    new_points, new_rank = _redeem(transaction)
 
     log_points_transaction(
         user_id=uid,

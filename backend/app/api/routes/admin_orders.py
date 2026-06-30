@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.core.firebase import get_db
 from app.core.security import verify_admin_token
+from app.core.inventory import restock_order_items
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Orders"])
 db = get_db()
@@ -166,6 +167,9 @@ def update_order(
         # Tự động cập nhật paymentStatus khi delivered + COD
         if body.status == "delivered" and current.get("paymentMethod") == "cod":
             updates.setdefault("paymentStatus", "paid")
+            
+        if body.status == "cancelled" and current_status not in ("cancelled", "delivered"):
+            restock_order_items(db, current.get("items", []))
 
     if body.paymentStatus is not None:
         if body.paymentStatus not in VALID_PAYMENT_STATUSES:
