@@ -11,19 +11,15 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+
+from app.core.constants import VALID_RANKS
 from app.core.security import verify_admin_token, require_permission
 from app.core.firebase import get_db
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Users"])
 
-# FIX 7: Dùng Dependency Injection thay vì gọi get_db() ở module level
 def get_firestore_db():
     return get_db()
-
-# FIX 1: Bỏ chuỗi rỗng "" — dùng "none" để biểu thị chưa có rank;
-#         thêm "bronze" cho đủ hệ thống rank chuẩn
-VALID_RANKS = {"none", "bronze", "silver", "gold", "platinum"}
-
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -40,7 +36,6 @@ def _serialize_user(doc) -> dict:
     data["id"] = doc.id
     data.pop("password_hash", None)
     data.pop("password", None)
-    # FIX 5: Dùng isinstance(datetime) thay vì hasattr("isoformat") cho chính xác hơn
     for field in ("createdAt", "updatedAt", "lastLoginAt"):
         if isinstance(data.get(field), datetime):
             data[field] = data[field].isoformat()
@@ -56,7 +51,6 @@ def list_users(
     admin: dict = Depends(verify_admin_token),
     db=Depends(get_firestore_db),  # FIX 7
 ):
-    # FIX 3: Dùng Firestore offset/limit thay vì load toàn bộ vào RAM
     query = (
         db.collection("users")
     )
@@ -120,13 +114,10 @@ def delete_user(
     if not user_ref.get().exists:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
 
-    # FIX 4: Xóa các sub-collections liên quan (thêm "addresses", giữ "cart")
     for sub in ("addresses", "cart"):
         for doc in user_ref.collection(sub).stream():
             doc.reference.delete()
 
-    # FIX 6: Orders trong Firestore là root collection có field userId
-    #         → query và xóa toàn bộ orders của user này
     orders_query = db.collection("orders").where("userId", "==", user_id).stream()
     for order_doc in orders_query:
         # Xóa sub-collections của order nếu có (ví dụ: items)

@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/admin_products.py
+app/api/routes/admin_products.py
 
 GET    /api/admin/products               — Danh sách sản phẩm (phân trang + lọc)
 POST   /api/admin/products               — Tạo sản phẩm mới

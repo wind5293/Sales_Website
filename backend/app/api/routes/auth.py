@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/auth.py
+app/api/routes/auth.py
 
 POST /api/auth/login   — đăng nhập bằng email + password
 POST /api/auth/signup  — đăng ký tài khoản mới

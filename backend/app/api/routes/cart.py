@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/cart.py
+app/api/routes/cart.py
 
 GET    /api/cart                     — Lấy giỏ hàng
 POST   /api/cart                     — Thêm sản phẩm vào giỏ

@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/reviews.py
+app/api/routes/reviews.py
 
 POST   /api/products/{id}/reviews      — Tạo review
 GET    /api/products/{id}/reviews      — Danh sách review

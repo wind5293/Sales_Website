@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/orders.py
+app/api/routes/orders.py
 
 GET    /api/orders               — Đơn hàng của user
 GET    /api/orders/{id}          — Chi tiết đơn hàng

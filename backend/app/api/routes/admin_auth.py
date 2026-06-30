@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/admin_auth.py
+app/api/routes/admin_auth.py
 
 POST /api/admin/login  — đăng nhập admin, trả về JWT
 GET  /api/admin/me     — thông tin admin hiện tại

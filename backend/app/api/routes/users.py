@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/users.py
+app/api/routes/users.py
 
 GET    /api/users/me                   — Thông tin user
 PATCH  /api/users/me                   — Cập nhật profile

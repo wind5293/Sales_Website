@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/points.py
+app/api/routes/points.py
 
 GET   /api/users/points          — Điểm, rank, lịch sử gần nhất
 POST  /api/users/redeem-points   — Đổi điểm lấy voucher
@@ -17,6 +17,7 @@ from firebase_admin import firestore
 from app.core.firebase import get_db
 from app.core.security import get_uid, verify_token
 from app.schemas import RedeemPointsRequest
+from app.core.constants import RANK_THRESHOLDS, compute_rank
 
 router = APIRouter(prefix="/api/users", tags=["Points & Rewards"])
 db = get_db()
@@ -24,17 +25,7 @@ db = get_db()
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-RANK_THRESHOLDS = {"Silver": 0, "Gold": 500, "Diamond": 2000}
-POINTS_TO_VND = 1000  # 1 điểm = 1,000 VND
-
-
-def compute_rank(points: int) -> str:
-    if points >= RANK_THRESHOLDS["Diamond"]:
-        return "Diamond"
-    if points >= RANK_THRESHOLDS["Gold"]:
-        return "Gold"
-    return "Silver"
-
+POINTS_TO_VND = 1000
 
 def points_to_next_rank(points: int) -> Optional[int]:
     if points < RANK_THRESHOLDS["Gold"]:
@@ -52,11 +43,11 @@ def generate_voucher_code() -> str:
 
 def log_points_transaction(user_id: str, delta: int, reason: str, order_id: Optional[str] = None):
     db.collection("points_history").add({
-        "user_id": user_id,
+        "userId": user_id,
         "delta": delta,
         "reason": reason,
-        "order_id": order_id,
-        "created_at": datetime.now(),
+        "orderId": order_id,
+        "createdAt": datetime.now(),
     })
 
 
@@ -76,8 +67,8 @@ def get_user_points(decoded_token: dict = Depends(verify_token)):
 
     history_docs = (
         db.collection("points_history")
-        .where("user_id", "==", uid)
-        .order_by("created_at", direction="DESCENDING")
+        .where("userId", "==", uid)
+        .order_by("createdAt", direction="DESCENDING")
         .limit(10)
         .stream()
     )
@@ -170,8 +161,8 @@ def get_points_history(
 
     docs = (
         db.collection("points_history")
-        .where("user_id", "==", uid)
-        .order_by("created_at", direction="DESCENDING")
+        .where("userId", "==", uid)
+        .order_by("createdAt", direction="DESCENDING")
         .limit(limit)
         .stream()
     )

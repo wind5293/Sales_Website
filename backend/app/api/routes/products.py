@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/products.py
+app/api/routes/products.py
 
 GET  /api/products           — Danh sách sản phẩm
 GET  /api/products/search    — Tìm kiếm full-text

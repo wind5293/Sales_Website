@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/wishlist.py
+app/api/routes/wishlist.py
 
 GET    /api/wishlists/items              — Xem danh sách yêu thích
 POST   /api/wishlists/items/{product_id} — Thêm sản phẩm

@@ -1,5 +1,5 @@
 """
-app/api/v1/routes/coupons.py
+app/api/routes/coupons.py
 
 POST   /api/coupons/validate       — Kiểm tra mã giảm giá (user)
 POST   /api/coupons/admin          — Tạo mã mới [Admin]
