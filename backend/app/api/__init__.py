@@ -5,6 +5,7 @@ from app.api.routes import (
     admin_products,
     admin_orders,
     admin_users,
+    admin_audit,
     auth,
     cart,
     orders,
@@ -13,7 +14,7 @@ from app.api.routes import (
     users,
     points,
     coupons,
-    wishlist
+    wishlist,
 )
 
 router = APIRouter()
@@ -28,6 +29,7 @@ router.include_router(admin_auth.router)
 router.include_router(admin_products.router)
 router.include_router(admin_orders.router)
 router.include_router(admin_users.router)
+router.include_router(admin_audit.router)
 router.include_router(points.router)
 router.include_router(coupons.router)
 router.include_router(wishlist.router)

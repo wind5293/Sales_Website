@@ -20,4 +20,5 @@ export const NAV = [
     { id: "users", label: "Người dùng", icon: "fas fa-users" },
     { id: "coupons", label: "Mã giảm giá", icon: "fas fa-ticket-alt" },
     { id: "analytics", label: "Báo cáo", icon: "fas fa-chart-bar" },
+    { id: "audit_logs", label: "Nhật ký hoạt động", icon: "fas fa-clipboard-list" }
 ];

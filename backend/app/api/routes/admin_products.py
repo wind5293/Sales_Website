@@ -21,6 +21,7 @@ from app.core.firebase import get_db
 from app.core.security import verify_admin_token
 from app.schemas import CreateProductRequest, UpdateProductRequest, slugify
 from app.core.config import CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME
+from app.core.audit import log_admin_action
 
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Products"])
@@ -166,6 +167,14 @@ def create_product(
         "updatedAt": now,
     }
     _, ref = db.collection("products").add(data)
+    
+    log_admin_action(
+        db, 
+        admin, 
+        action="create_product", 
+        target_type="product", 
+        target_id=ref.id
+    )
 
     return {
         "message": "Tạo sản phẩm thành công",
@@ -234,6 +243,18 @@ def update_product(
         updates.setdefault("discountPercent", round((1 - new_price / new_orig) * 100))
 
     ref.update(updates)
+    
+    log_admin_action(
+        db, admin,
+        action="update_product",
+        target_type="product",
+        target_id=product_id,
+        details={
+            "changes": {k: v for k, v in updates.items() if k != "updatedAt"},
+            "priceBefore": current.get("price"),
+        },
+    )
+    
     return {"message": "Cập nhật sản phẩm thành công", "product": _serialize(ref.get())}
 
 
@@ -242,7 +263,18 @@ def delete_product(
     product_id: str,
     admin: dict = Depends(verify_admin_token),
 ):
-    _get_or_404(product_id).delete()
+    ref = _get_or_404(product_id)
+    snapshot = ref.get().to_dict()
+    ref.delete()
+
+    log_admin_action(
+        db, admin,
+        action="delete_product",
+        target_type="product",
+        target_id=product_id,
+        details={"name": snapshot.get("name"), "sku": snapshot.get("sku")},
+    )
+    
     return {"message": "Đã xóa sản phẩm thành công"}
 
 

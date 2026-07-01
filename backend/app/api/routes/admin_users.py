@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from app.core.constants import VALID_RANKS
 from app.core.security import verify_admin_token, require_permission
 from app.core.firebase import get_db
+from app.core.audit import log_admin_action
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Users"])
 
@@ -99,6 +100,15 @@ def update_user(
 
     user_ref.update(updates)
     updated = _serialize_user(user_ref.get())
+    
+    log_admin_action(
+        db, admin,
+        action="update_user",
+        target_type="user",
+        target_id=user_id,
+        details={"changes": {k: v for k, v in updates.items() if k != "updatedAt"}},
+    )
+    
     return {"message": "Cập nhật người dùng thành công", "user": updated}
 
 
@@ -111,20 +121,46 @@ def delete_user(
     db=Depends(get_firestore_db),  # FIX 7
 ):
     user_ref = db.collection("users").document(user_id)
-    if not user_ref.get().exists:
+    user_doc = user_ref.get()
+    if not user_doc.exists:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+    
+    if user_doc.to_dict().get("deleted"):
+        raise HTTPException(status_code=400, detail="Tài khoản này đã bị xóa trước đó")
+    
+    now = datetime.now()
 
     for sub in ("addresses", "cart"):
         for doc in user_ref.collection(sub).stream():
             doc.reference.delete()
+            
+    user_ref.update({
+        "deleted": True,
+        "deletedAt": now,
+        "is_banned": True, 
+        "email": f"deleted-{user_id}@removed.local",
+        "name": "Người dùng đã xóa",
+        "phone": "",
+        "photoURL": "",
+        "updatedAt": now,
+    })
 
     orders_query = db.collection("orders").where("userId", "==", user_id).stream()
     for order_doc in orders_query:
-        # Xóa sub-collections của order nếu có (ví dụ: items)
-        for sub in ("items",):
-            for item_doc in order_doc.reference.collection(sub).stream():
-                item_doc.reference.delete()
-        order_doc.reference.delete()
+        order_doc.reference.update({
+            "recipientName": "Người dùng đã xóa",
+            "phone": "",
+            "shippingAddress": "",
+            "note": "",
+            "updatedAt": now,
+        })
+        
+    log_admin_action(
+        db,
+        admin,
+        action="delete_user",
+        target_type="user",
+        target_id=user_id,
+    )
 
-    user_ref.delete()
-    return {"message": "Đã xóa tài khoản người dùng thành công"}
+    return {"message": "Đã xóa (ẩn danh) tài khoản người dùng thành công"}

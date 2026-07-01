@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.core.firebase import get_db
 from app.core.security import verify_admin_token
 from app.core.inventory import restock_order_items
+from app.core.audit import log_admin_action
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Orders"])
 db = get_db()
@@ -198,6 +199,17 @@ def update_order(
         raise HTTPException(400, detail="Không có trường nào được cập nhật")
 
     ref.update(updates)
+    
+    log_admin_action(
+        db, admin,
+        action="update_order_status" if body.status else "update_order",
+        target_type="order",
+        target_id=order_id,
+        details={
+            "changes": {k: v for k, v in updates.items() if k != "updatedAt"},
+            "statusBefore": current.get("status"),
+        },
+    )
 
     return {
         "message": "Cập nhật đơn hàng thành công",

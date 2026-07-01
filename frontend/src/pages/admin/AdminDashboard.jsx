@@ -7,6 +7,7 @@ import Orders from "./admin_pages/Orders";
 import Users from "./admin_pages/Users";
 import Analytics from "./admin_pages/Analytics";
 import Coupons from "./admin_pages/Coupons";
+import AuditLogs from "./admin_pages/AuditLogs";
 
 const SECTIONS = {
     overview: Overview,
@@ -15,6 +16,7 @@ const SECTIONS = {
     users: Users,
     coupons: Coupons,
     analytics: Analytics,
+    audit_logs: AuditLogs,
 };
 
 export default function AdminDashboard() {
