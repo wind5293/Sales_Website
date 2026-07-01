@@ -7,7 +7,7 @@ GET  /api/admin/me     — thông tin admin hiện tại
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.core.config import ACCESS_TOKEN_EXPIRE_HOURS
 from app.core.firebase import get_db
@@ -33,8 +33,8 @@ def _get_admin_by_email(email: str) -> dict | None:
     return None
 
 
-@router.post("/login", response_model=AdminLoginResponse, summary="Đăng nhập admin")
-def admin_login(body: AdminLoginRequest):
+@router.post("/login", summary="Đăng nhập admin")
+def admin_login(body: AdminLoginRequest, response: Response):
     admin = _get_admin_by_email(body.email)
 
     if not admin or not verify_password(body.password, admin.get("password_hash", "")):
@@ -53,16 +53,25 @@ def admin_login(body: AdminLoginRequest):
     db.collection("admins").document(admin["id"]).update({
         "lastLoginAt": datetime.now()
     })
+    
+    response.set_cookie(
+        key="admin_token",
+        value=token,
+        httponly=True,
+        secure=True,         # bắt buộc True khi deploy HTTPS; localhost http vẫn hoạt động trên hầu hết trình duyệt hiện đại với samesite=lax
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
+        path="/",
+    )
 
-    return AdminLoginResponse(
-        access_token=token,
-        admin_info={
+    return { 
+        "admin_info": {
             "id": admin["id"],
             "email": admin["email"],
             "role": admin.get("role", "admin"),
             "permissions": admin.get("permissions", []),
-        },
-    )
+        }
+    }
 
 
 @router.get("/me", summary="Thông tin admin hiện tại")
@@ -80,3 +89,8 @@ def get_admin_me(admin: dict = Depends(verify_admin_token)):
         "createdAt": data["createdAt"].isoformat() if data.get("createdAt") else None,
         "lastLoginAt": data["lastLoginAt"].isoformat() if data.get("lastLoginAt") else None,
     }
+
+@router.post("/logout", summary="Đăng xuất admin")
+def admin_logout(response: Response):
+    response.delete_cookie(key="admin_token", path="/")
+    return {"message": "Đã đăng xuất"}

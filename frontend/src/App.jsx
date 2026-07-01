@@ -43,10 +43,13 @@ const AppContent = () => {
     useEffect(() => {
         const checkToken = () => {
             const token = localStorage.getItem('auth_token');
+            const adminInfo = localStorage.getItem('admin_info')
             if (isTokenExpired(token)) {
-                clearAuthData();
-                setUser('Welcome');
-                setUserId(null);
+                if (!adminInfo) {
+                    clearAuthData();
+                    setUser('Welcome');
+                    setUserId(null);
+                }
                 return;
             }
             const savedUserName = localStorage.getItem('user_name');

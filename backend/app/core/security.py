@@ -8,10 +8,9 @@ Single source of truth cho toàn bộ xác thực:
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth
 from jose import JWTError, jwt
@@ -74,11 +73,17 @@ def create_access_token(data: dict) -> str:
 
 
 def verify_admin_token(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    request: Request
 ) -> dict:
     """Xác thực admin JWT. Dùng cho tất cả admin routes."""
+    token = request.cookies.get("admin_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa đăng nhập",
+        )
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if not payload.get("sub"):
             raise ValueError("Missing sub")
         return payload
@@ -86,7 +91,6 @@ def verify_admin_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token không hợp lệ hoặc đã hết hạn",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
 

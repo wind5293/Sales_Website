@@ -41,6 +41,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const [showLocation, setShowLocation] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState('Hồ Chí Minh');
     const [categories, setCategories] = useState([]);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     const popupRef = useRef(null); 
     const categoryRef = useRef(null);
@@ -48,7 +49,24 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
 
     const { totalItems, openCart, resetCart } = useCart();
 
-    const isAdmin = Boolean(localStorage.getItem("admin_token")) && username !== 'Welcome';
+    useEffect(() => {
+        if (username === 'Welcome') {
+            setIsAdmin(false);
+            return;
+        }
+        const hasAdminInfo = Boolean(localStorage.getItem("admin_info"));
+        if (!hasAdminInfo) {
+            setIsAdmin(false);
+            return;
+        }
+        // Xác thực lại với server vì admin_info có thể còn sót nhưng cookie đã hết hạn
+        axios.get("/api/admin/me", { withCredentials: true })
+            .then(() => setIsAdmin(true))
+            .catch(() => {
+                setIsAdmin(false);
+                localStorage.removeItem("admin_info");
+            });
+    }, [username]);
 
     useEffect(() => {
         fetch('/api/products/category/all')
@@ -99,13 +117,17 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
         navigate(path);      // Chuyển trang
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await axios.post('/api/admin/logout', {}, { withCredentials: true });
+        } catch {
+            
+        }
+
         localStorage.removeItem('user_name');
         localStorage.removeItem('user_email');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
-
-        localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_info');
 
         localStorage.clear();

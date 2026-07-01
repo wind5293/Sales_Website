@@ -69,7 +69,6 @@ export default function Login({ onNavigate, onLoginSuccess }) {
 
             const { access_token, admin_info } = adminResponse.data;
 
-            localStorage.setItem("admin_token", access_token);
             localStorage.setItem("admin_info", JSON.stringify(admin_info));
             localStorage.setItem("user_name", admin_info.email);
 

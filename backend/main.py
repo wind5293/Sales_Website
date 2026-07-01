@@ -24,6 +24,13 @@ ALLOWED_ORIGINS = (
 
 app.include_router(router)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health", tags=["Health"])
 def health_check():

@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
-
+import { useState, useEffect } from "react";
+import axios from "axios";
 /**
  * AdminRoute — Protected route cho admin dashboard
  *
@@ -20,22 +21,34 @@ import { Navigate, useLocation } from "react-router-dom";
  */
 export default function AdminRoute({ children }) {
     const location = useLocation();
+    const [status, setStatus] = useState("checking"); // checking | ok | fail
 
-    const adminToken = localStorage.getItem("admin_token");
-    const adminInfoRaw = localStorage.getItem("admin_info");
+    useEffect(() => {
+        let cancelled = false;
 
-    // Parse an toàn
-    let adminInfo = null;
-    try {
-        adminInfo = adminInfoRaw ? JSON.parse(adminInfoRaw) : null;
-    } catch {
-        adminInfo = null;
+        axios.get("/api/admin/me", { withCredentials: true })
+            .then(() => {
+                if (!cancelled) setStatus("ok");
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    localStorage.removeItem("admin_info");
+                    setStatus("fail");
+                }
+            });
+
+        return () => { cancelled = true; };
+    }, []);
+
+    if (status === "checking") {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <i className="fas fa-spinner fa-spin text-2xl text-amber-500"></i>
+            </div>
+        );
     }
 
-    const isAuthenticated = Boolean(adminToken && adminInfo);
-
-    if (!isAuthenticated) {
-        // Lưu lại trang đang muốn vào, sau khi login sẽ redirect đúng chỗ
+    if (status === "fail") {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 

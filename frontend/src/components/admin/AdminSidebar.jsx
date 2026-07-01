@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { NAV } from "../../utils/admin/helpers";
+import adminApi from "../../utils/admin/adminApi";
 
 export default function AdminSidebar({ active, onNavigate }) {
     const navigate = useNavigate();
@@ -9,10 +10,15 @@ export default function AdminSidebar({ active, onNavigate }) {
         catch { return {}; }
     })();
 
-    const handleLogout = () => {
-        localStorage.removeItem("admin_token");
-        localStorage.removeItem("admin_info");
-        navigate("/login");
+    const handleLogout = async () => {
+        try {
+            await adminApi.post("/api/admin/logout");
+        } catch {
+            
+        } finally {
+            localStorage.removeItem("admin_info");
+            navigate("/login");
+        }
     };
 
     return (
