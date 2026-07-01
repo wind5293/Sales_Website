@@ -52,6 +52,23 @@ def create_review(
             status_code=status.HTTP_409_CONFLICT,
             detail="Bạn đã đánh giá sản phẩm này rồi. Hãy chỉnh sửa đánh giá hiện tại.",
         )
+        
+    # Kiểm tra đã mua và nhận hàng chưa
+    delivered_orders = (
+        db.collection("orders")
+        .where("userId", "==", uid)
+        .where("status", "==", "delivered")
+        .stream()
+    )
+    has_purchased = any(
+        any(item.get("productId") == product_id for item in order.to_dict().get("items", []))
+        for order in delivered_orders
+    )
+    if not has_purchased:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn cần mua và nhận sản phẩm này trước khi đánh giá",
+        )
 
     # Lấy tên hiển thị từ Firebase Auth
     from firebase_admin import auth as fb_auth
@@ -69,6 +86,7 @@ def create_review(
         "title": body.title,
         "text": body.text,
         "productId": product_id,
+        "verifiedPurchase": True,
         "createdAt": now,
         "updatedAt": now,
     })

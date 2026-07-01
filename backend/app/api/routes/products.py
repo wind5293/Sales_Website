@@ -48,7 +48,8 @@ def get_categories():
 
 @router.get("/search")
 def search_products(
-    q: str = Query(..., min_length=1),
+    q: str = Query("", min_length=0),
+    categoryId: Optional[str] = Query(None),
     limit: int = Query(20, le=100),
     skip: int = Query(0, ge=0),
 ):
@@ -56,20 +57,28 @@ def search_products(
     Full-text search theo tên, brand, categoryName, description, sku.
     Firestore không hỗ trợ native full-text — nên dùng Algolia khi dataset > 1000 sản phẩm.
     """
-    keyword = q.strip().lower()
-    docs = db.collection("products").where("status", "!=", "hidden").stream()
+    query = db.collection("products").where("status", "!=", "hidden")
+    if categoryId:
+        query = query.where("categoryId", "==", categoryId)
+        
+    docs = query.stream()
 
+    keyword = q.strip().lower()
     matched = []
     for doc in docs:
         p = {"id": doc.id, **doc.to_dict()}
-        searchable = " ".join([
-            p.get("name", ""), p.get("brand", ""), p.get("categoryName", ""),
-            p.get("shortDescription", ""), p.get("description", ""), p.get("sku", ""),
-        ]).lower()
-        if keyword in searchable:
-            matched.append(p)
+        if keyword:
+            searchable = " ".join([
+                p.get("name", ""), p.get("brand", ""), p.get("categoryName", ""),
+                p.get("shortDescription", ""), p.get("description", ""), p.get("sku", ""),
+            ]).lower()
+            if keyword not in searchable:
+                continue
+        matched.append(p)
 
-    matched.sort(key=lambda p: 0 if keyword in p.get("name", "").lower() else 1)
+    if keyword:
+        matched.sort(key=lambda p: 0 if keyword in p.get("name", "").lower() else 1)
+
     return {
         "items": matched[skip: skip + limit],
         "total": len(matched),
@@ -82,6 +91,7 @@ def search_products(
 @router.get("/filter")
 def filter_products(
     category: Optional[str] = Query(None),
+    categoryId: Optional[str] = Query(None),
     price_min: Optional[float] = Query(None, ge=0),
     price_max: Optional[float] = Query(None, ge=0),
     rating_min: Optional[float] = Query(None, ge=0, le=5),
@@ -90,6 +100,8 @@ def filter_products(
     skip: int = Query(0, ge=0),
 ):
     query = db.collection("products").where("status", "!=", "hidden")
+    if categoryId:
+        query = query.where("categoryId", "==", categoryId)
     if in_stock is True:
         query = query.where("status", "==", "active")
 

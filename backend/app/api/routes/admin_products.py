@@ -98,9 +98,22 @@ def list_products(
     if brand:
         query = query.where("brand", "==", brand)
 
+    has_python_filter = any([q, minPrice is not None, maxPrice is not None, lowStock])
+
+    if not has_python_filter:
+        total_docs = list(query.stream())
+        total = len(total_docs)
+        paginated = [_serialize(doc) for doc in query.offset(skip).limit(limit).stream()]
+        return {
+            "products": paginated,
+            "total": total,
+            "page": skip // limit,
+            "pages": -(-total // limit),
+        }
+
+    # Có filter Python-side → load toàn bộ (không tránh được với Firestore)
     all_docs = [_serialize(doc) for doc in query.stream()]
 
-    # Python-side filters (linh hoạt, không cần index)
     if q:
         q_lower = q.strip().lower()
         all_docs = [

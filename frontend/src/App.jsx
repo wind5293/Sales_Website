@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { CartProvider, useCart } from "./context/CartContext";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -19,6 +19,11 @@ import Orders from "./pages/Orders";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import { isTokenExpired, clearAuthData } from "./utils/auth";
+
+function CategoryRedirect() {
+    const { categoryId } = useParams();
+    return <Navigate to={`/search?category=${categoryId}`} replace />;
+}
 
 const AppContent = () => {
     const [user, setUser] = useState('Welcome');
@@ -116,7 +121,7 @@ const AppContent = () => {
                         />
                     }
                 />
-                <Route path="/category/:categoryId" element={<CategoryPage />} />
+                <Route path="/category/:categoryId" element={<CategoryRedirect />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profile/addresses" element={<AddressBook />} />

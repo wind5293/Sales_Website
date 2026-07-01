@@ -146,18 +146,22 @@ def get_my_orders(
     skip: int = Query(0, ge=0),
 ):
     uid = get_uid(decoded_token)
-    query = db.collection("orders").where("userId", "==", uid)
+    query = (
+        db.collection("orders")
+        .where("userId", "==", uid)
+        .order_by("createdAt", direction="DESCENDING")
+    )
     if status:
         query = query.where("status", "==", status)
 
-    raw = sorted(
-        list(query.stream()),
-        key=lambda d: d.to_dict().get("createdAt") or datetime.min,
-        reverse=True,
-    )
+    total_docs = list(query.stream())
+    total = len(total_docs)
+
+    paginated = list(query.offset(skip).limit(limit).stream())
+
     return {
-        "orders": [_serialize_order(d) for d in raw[skip: skip + limit]],
-        "total": len(raw),
+        "orders": [_serialize_order(d) for d in paginated],
+        "total": total,
     }
 
 

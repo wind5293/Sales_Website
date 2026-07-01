@@ -92,9 +92,24 @@ def list_orders(
     if paymentMethod:
         query = query.where("paymentMethod", "==", paymentMethod)
 
+    has_python_filter = any([date_from, date_to, q])
+
+    if not has_python_filter:
+        total_docs = list(query.stream())
+        total = len(total_docs)
+        revenue = sum(d.to_dict().get("totalPrice") or 0 for d in total_docs)
+        paginated = [_serialize(doc) for doc in query.offset(skip).limit(limit).stream()]
+        return {
+            "orders": paginated,
+            "total": total,
+            "revenue": revenue,
+            "page": skip // limit,
+            "pages": -(-total // limit),
+        }
+
+    # Có filter Python-side → load toàn bộ
     all_docs = [_serialize(doc) for doc in query.stream()]
 
-    # Python-side filters
     if date_from:
         try:
             dt_from = datetime.fromisoformat(date_from)
@@ -104,7 +119,6 @@ def list_orders(
 
     if date_to:
         try:
-            # date_to bao gồm cả ngày cuối → set đến 23:59:59
             dt_to = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59)
             all_docs = [d for d in all_docs if d.get("createdAt") and d["createdAt"] <= dt_to.isoformat()]
         except ValueError:
@@ -119,8 +133,6 @@ def list_orders(
         ]
 
     total = len(all_docs)
-
-    # Tính tổng doanh thu của kết quả lọc (hữu ích cho dashboard)
     revenue = sum(d.get("totalPrice") or 0 for d in all_docs)
 
     return {

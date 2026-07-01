@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import ProductCard from '../components/ProductCard';
+
+const LIMIT = 20;
 
 const SORT_OPTIONS = [
     { value: 'default', label: 'Mặc định' },
@@ -14,7 +16,7 @@ const PRICE_RANGES = [
     { label: 'Tất cả', min: null, max: null },
     { label: 'Dưới 1tr', min: null, max: 1000000 },
     { label: '1tr – 5tr', min: 1000000, max: 5000000 },
-    { label: '5tr – 20tr', min: 500000, max: 20000000 },
+    { label: '5tr – 20tr', min: 5000000, max: 20000000 },
     { label: 'Trên 20tr', min: 20000000, max: null },
 ];
 
@@ -25,12 +27,13 @@ const RATING_OPTIONS = [
 ];
 
 const DEFAULT_FILTERS = {
-    priceRange: 0,        // index vào PRICE_RANGES
+    priceRange: 0,
     ratingMin: null,
-    inStock: null,        // null | true | false
+    inStock: null,
     saleOnly: false,
 };
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 const SkeletonCard = () => (
     <div className="bg-white border border-slate-200 rounded-sm p-4 animate-pulse">
         <div className="h-44 bg-slate-200 mb-4" />
@@ -41,6 +44,7 @@ const SkeletonCard = () => (
     </div>
 );
 
+// ── Sidebar filter section ────────────────────────────────────────────────────
 const FilterSection = ({ title, children }) => (
     <div className="border-b border-slate-100 pb-5 mb-5 last:border-0 last:pb-0 last:mb-0">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">{title}</p>
@@ -48,19 +52,30 @@ const FilterSection = ({ title, children }) => (
     </div>
 );
 
+// ── Main ─────────────────────────────────────────────────────────────────────
 const SearchPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+
     const query = searchParams.get('q') || '';
+    const categoryId = searchParams.get('category') || '';
 
     const [products, setProducts] = useState([]);
     const [total, setTotal] = useState(0);
+    const [skip, setSkip] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [categoryName, setCategoryName] = useState('');
     const [sortBy, setSortBy] = useState('default');
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Đếm số filter đang active (không kể default)
+    // Dùng ref để tránh stale closure trong fetchResults
+    const filtersRef = useRef(filters);
+    const sortByRef = useRef(sortBy);
+    filtersRef.current = filters;
+    sortByRef.current = sortBy;
+
     const activeFilterCount = [
         filters.priceRange !== 0,
         filters.ratingMin !== null,
@@ -68,49 +83,62 @@ const SearchPage = () => {
         filters.saleOnly,
     ].filter(Boolean).length;
 
-    const fetchResults = useCallback(async () => {
-        if (!query) {
+    const hasMore = products.length < total;
+
+    // ── Fetch ──────────────────────────────────────────────────────────────
+    const fetchResults = useCallback(async (currentSkip, isReset = false) => {
+        const f = filtersRef.current;
+        const sort = sortByRef.current;
+
+        if (!query && !categoryId) {
             setProducts([]);
             setTotal(0);
             setLoading(false);
             return;
         }
 
-        setLoading(true);
+        isReset ? setLoading(true) : setLoadingMore(true);
 
         try {
-            const range = PRICE_RANGES[filters.priceRange];
+            const range = PRICE_RANGES[f.priceRange];
             const params = new URLSearchParams();
-            params.set('q', query);
-            params.set('limit', '100');
+
+            if (query) params.set('q', query);
+            if (categoryId) params.set('categoryId', categoryId);
+            params.set('limit', LIMIT);
+            params.set('skip', currentSkip);
+
             if (range.min !== null) params.set('price_min', range.min);
             if (range.max !== null) params.set('price_max', range.max);
-            if (filters.ratingMin !== null) params.set('rating_min', filters.ratingMin);
-            if (filters.inStock !== null) params.set('in_stock', filters.inStock);
+            if (f.ratingMin !== null) params.set('rating_min', f.ratingMin);
+            if (f.inStock !== null) params.set('in_stock', f.inStock);
 
-            // Gọi /filter nếu có filter nâng cao, không thì dùng /search
             const hasAdvancedFilter =
-                filters.priceRange !== 0 ||
-                filters.ratingMin !== null ||
-                filters.inStock !== null;
+                f.priceRange !== 0 || f.ratingMin !== null || f.inStock !== null;
 
             let items = [];
+            let serverTotal = 0;
+
             if (hasAdvancedFilter) {
+                // filter endpoint cũng hỗ trợ categoryId và q (sau khi sửa backend)
+                if (query) params.set('category', categoryId); // category slug/id
                 const res = await axios.get(`/api/products/filter?${params.toString()}`);
                 items = res.data.items || [];
+                serverTotal = res.data.total ?? items.length;
             } else {
                 const res = await axios.get(`/api/products/search?${params.toString()}`);
                 items = res.data.items || [];
+                serverTotal = res.data.total ?? items.length;
             }
 
-            // Client-side: lọc giảm giá
-            if (filters.saleOnly) {
+            // Client-side: lọc giảm giá (không có field trên server)
+            if (f.saleOnly) {
                 items = items.filter(p => p.discountPercent > 0);
             }
 
             // Client-side sort
             items = [...items].sort((a, b) => {
-                switch (sortBy) {
+                switch (sort) {
                     case 'price_asc': return a.price - b.price;
                     case 'price_desc': return b.price - a.price;
                     case 'name_asc': return a.name.localeCompare(b.name, 'vi');
@@ -118,20 +146,43 @@ const SearchPage = () => {
                 }
             });
 
-            setProducts(items);
-            setTotal(items.length);
+            if (isReset) {
+                setProducts(items);
+            } else {
+                setProducts(prev => [...prev, ...items]);
+            }
+
+            setTotal(serverTotal);
+
+            // Lấy tên category từ sản phẩm đầu tiên nếu đang browse category
+            if (categoryId && items.length > 0 && !categoryName) {
+                setCategoryName(items[0].categoryName || categoryId);
+            }
+
         } catch (err) {
             console.error('Lỗi tải kết quả:', err);
-            setProducts([]);
-            setTotal(0);
+            if (isReset) {
+                setProducts([]);
+                setTotal(0);
+            }
         } finally {
-            setLoading(false);
+            isReset ? setLoading(false) : setLoadingMore(false);
         }
-    }, [query, filters, sortBy]);
+    }, [query, categoryId, categoryName]);
 
+    // Reset khi query/category/filters/sort thay đổi
     useEffect(() => {
-        fetchResults();
-    }, [fetchResults]);
+        setProducts([]);
+        setSkip(0);
+        setCategoryName('');
+        fetchResults(0, true);
+    }, [query, categoryId, filters, sortBy]);
+
+    const handleLoadMore = () => {
+        const nextSkip = skip + LIMIT;
+        setSkip(nextSkip);
+        fetchResults(nextSkip, false);
+    };
 
     const updateFilter = (key, value) =>
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -141,10 +192,18 @@ const SearchPage = () => {
         setSortBy('default');
     };
 
-    // ── Sidebar nội dung ──────────────────────────────────────────
+    // ── Tiêu đề trang ─────────────────────────────────────────────────────
+    const pageTitle = categoryId
+        ? (categoryName || 'Đang tải...')
+        : query
+            ? <>Kết quả cho: <span className="text-amber-500">"{query}"</span></>
+            : 'Tất cả sản phẩm';
+
+    const breadcrumbLabel = categoryId ? (categoryName || 'Danh mục') : 'Tìm kiếm';
+
+    // ── Sidebar content ───────────────────────────────────────────────────
     const SidebarContent = () => (
         <div className="w-full">
-            {/* Header sidebar */}
             <div className="flex items-center justify-between mb-6">
                 <span className="font-bold text-slate-800 text-base">Bộ lọc</span>
                 {activeFilterCount > 0 && (
@@ -157,7 +216,6 @@ const SearchPage = () => {
                 )}
             </div>
 
-            {/* Khoảng giá */}
             <FilterSection title="Khoảng giá">
                 <div className="flex flex-col gap-2">
                     {PRICE_RANGES.map((range, idx) => (
@@ -177,7 +235,6 @@ const SearchPage = () => {
                 </div>
             </FilterSection>
 
-            {/* Rating */}
             <FilterSection title="Đánh giá">
                 <div className="flex flex-col gap-2">
                     {RATING_OPTIONS.map(opt => (
@@ -200,7 +257,6 @@ const SearchPage = () => {
                 </div>
             </FilterSection>
 
-            {/* Tình trạng hàng */}
             <FilterSection title="Tình trạng">
                 <div className="flex flex-col gap-2">
                     {[
@@ -224,12 +280,11 @@ const SearchPage = () => {
                 </div>
             </FilterSection>
 
-            {/* Đang giảm giá */}
             <FilterSection title="Khuyến mãi">
                 <label className="flex items-center gap-3 cursor-pointer">
                     <div
                         onClick={() => updateFilter('saleOnly', !filters.saleOnly)}
-                        className={`relative w-10 h-5 rounded-full transition-colors ${filters.saleOnly ? 'bg-red-400' : 'bg-slate-200'}`}
+                        className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${filters.saleOnly ? 'bg-red-400' : 'bg-slate-200'}`}
                     >
                         <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${filters.saleOnly ? 'translate-x-5' : ''}`} />
                     </div>
@@ -249,15 +304,13 @@ const SearchPage = () => {
                         Trang chủ
                     </span>
                     <i className="fas fa-chevron-right text-[10px]" />
-                    <span className="text-slate-700 font-medium">Tìm kiếm</span>
+                    <span className="text-slate-700 font-medium">{breadcrumbLabel}</span>
                 </nav>
 
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">
-                            Kết quả cho: <span className="text-amber-500">"{query}"</span>
-                        </h1>
+                        <h1 className="text-2xl font-bold text-slate-800">{pageTitle}</h1>
                         {!loading && (
                             <p className="text-sm text-slate-400 mt-1">
                                 {total} sản phẩm
@@ -297,12 +350,12 @@ const SearchPage = () => {
                 {/* Layout: sidebar + grid */}
                 <div className="flex gap-6 items-start">
 
-                    {/* ── Sidebar desktop ── */}
+                    {/* Sidebar desktop */}
                     <aside className="hidden lg:block w-56 flex-shrink-0 bg-white border border-slate-200 rounded-xl p-5 sticky top-6">
                         <SidebarContent />
                     </aside>
 
-                    {/* ── Product grid ── */}
+                    {/* Product grid + load more */}
                     <div className="flex-1 min-w-0">
                         {loading ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -315,7 +368,9 @@ const SearchPage = () => {
                                 <p className="text-sm mt-1">
                                     {activeFilterCount > 0
                                         ? 'Thử xóa bớt bộ lọc để xem thêm kết quả.'
-                                        : `Không có kết quả cho "${query}".`
+                                        : query
+                                            ? `Không có kết quả cho "${query}".`
+                                            : 'Danh mục này chưa có sản phẩm.'
                                     }
                                 </p>
                                 <div className="flex justify-center gap-3 mt-5">
@@ -336,35 +391,62 @@ const SearchPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                                {products.map(product => (
-                                    <Link to={`/product/${product.id}`} key={product.id}>
-                                        <ProductCard
-                                            image={product.thumbnailUrl}
-                                            category={product.categoryName}
-                                            title={product.name}
-                                            price={product.price}
-                                            oldPrice={product.originalPrice}
-                                            discountPercent={product.discountPercent}
-                                            status={product.status}
-                                        />
-                                    </Link>
-                                ))}
-                            </div>
+                            <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                                    {products.map(product => (
+                                        <Link to={`/product/${product.id}`} key={product.id}>
+                                            <ProductCard
+                                                id={product.id}
+                                                image={product.thumbnailUrl}
+                                                category={product.categoryName}
+                                                title={product.name}
+                                                price={product.price}
+                                                oldPrice={product.originalPrice}
+                                                discountPercent={product.discountPercent}
+                                                status={product.status}
+                                            />
+                                        </Link>
+                                    ))}
+                                </div>
+
+                                {/* Load more */}
+                                {hasMore && (
+                                    <div className="mt-8 flex flex-col items-center gap-2">
+                                        <button
+                                            onClick={handleLoadMore}
+                                            disabled={loadingMore}
+                                            className="px-8 py-3 bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-700 font-semibold text-sm rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            {loadingMore
+                                                ? <><i className="fas fa-spinner fa-spin" /> Đang tải...</>
+                                                : <><i className="fas fa-chevron-down" /> Xem thêm {Math.min(LIMIT, total - products.length)} sản phẩm</>
+                                            }
+                                        </button>
+                                        <p className="text-xs text-slate-400">
+                                            Đang hiển thị {products.length} / {total} sản phẩm
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Đã xem hết */}
+                                {!hasMore && total > LIMIT && (
+                                    <p className="mt-8 text-center text-xs text-slate-400">
+                                        Đã hiển thị tất cả {total} sản phẩm
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* ── Mobile filter drawer ── */}
+            {/* Mobile filter drawer */}
             {sidebarOpen && (
                 <div className="fixed inset-0 z-50 flex lg:hidden">
-                    {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/40"
                         onClick={() => setSidebarOpen(false)}
                     />
-                    {/* Drawer */}
                     <div className="relative ml-auto w-72 max-w-full h-full bg-white shadow-xl p-6 overflow-y-auto">
                         <button
                             onClick={() => setSidebarOpen(false)}
