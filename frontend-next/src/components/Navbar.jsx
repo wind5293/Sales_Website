@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 
@@ -33,8 +32,8 @@ const USER_MENU_ITEMS = [
     }
 ];
 
-const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
-    const navigate = useRouter();
+const Navbar = ({ username, isAdmin, onSearch, onCartClick }) => {
+    const router = useRouter();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [showPopup, setShowPopup] = useState(false);
