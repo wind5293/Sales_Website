@@ -35,3 +35,10 @@ export async function getIsAdmin() {
     const cookieStore = await cookies();
     return Boolean(cookieStore.get('admin_info')?.value);
 }
+
+export async function getAuthHeader() {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    if (isTokenExpired(token)) return null;
+    return { Authorization: `Bearer ${token}` };
+}
