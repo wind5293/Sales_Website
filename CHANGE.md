@@ -39,12 +39,15 @@ Nguyên tắc cốt lõi xuyên suốt cả dự án:
 
 ## 3. Việc còn lại — theo thứ tự nên làm
 
-### Nhóm A — Auth (làm tiếp theo Login)
-- [ ] `Signup.jsx` → giống cấu trúc Login: Route Handler `src/app/api/auth/signup/route.js` + `src/app/signup/page.jsx` (Server, chỉ đặt title) + `src/app/signup/SignupForm.jsx` (Client, giữ nguyên UI)
+### Nhóm A — Auth (đã xong)
+- [x] `Signup.jsx` → gộp 1 file `src/app/signup/page.jsx` (không cần Route Handler riêng vì không set cookie)
 
 ### Nhóm B — Trang public, cần SSR để SEO
+- [x] `ProductDetail.jsx` → `src/app/product/[id]/page.jsx` + `ProductGallery.jsx` + `AddToCartButton.jsx` (Client) + `not-found.jsx`
+- [x] Reviews (`ProductReviews`, `ReviewCard`, `WriteReviewModal`) → `'use client'` + Route Handler `src/app/api/products/[id]/reviews/route.js`
+- [x] Cart (`CartContext`) → bỏ localStorage, dùng Route Handler `src/app/api/cart/route.js` + `src/app/api/cart/item/[id]/route.js`
+- [x] Sửa `next.config.mjs` — rewrites dùng cấu trúc `{ beforeFiles, afterFiles, fallback }`, đặt trong `fallback` để không "cướp" route động
 - [ ] `SearchPage.jsx` → `src/app/search/page.jsx`. Đọc query `?q=` và `?category=` qua `searchParams` (Next.js truyền sẵn vào Server Component, không cần `useSearchParams` như React Router)
-- [ ] `ProductDetail.jsx` → `src/app/product/[id]/page.jsx`. Lấy `id` qua `params`. Đây là trang quan trọng nhất cho SEO (Google cần thấy tên/giá sản phẩm ngay trong HTML)
 - [ ] `CategoryPage.jsx` → hiện tại chỉ redirect sang `/search?category=...`, xử lý bằng cách redirect ngay trong Server Component (`redirect()` từ `next/navigation`), không cần tạo component riêng
 
 ### Nhóm C — Trang cần đăng nhập (bảo vệ bằng middleware)
@@ -119,6 +122,10 @@ Khi mở 1 file `.jsx` cũ bất kỳ để chuyển, kiểm tra lần lượt t
 | `Unexpected token '<', "<!DOCTYPE"` khi gọi `/api/...` | Thiếu `rewrites` trong `next.config.mjs`, hoặc quên restart sau khi thêm | Kiểm tra `next.config.mjs`, restart `npm run dev` |
 | `Unexpected token 'I', "Internal S"` khi gọi `/api/...` | Backend FastAPI chưa chạy, hoặc `.env.local` sai `BACKEND_URL` | Chạy `uvicorn main:app --reload` ở `backend/`, kiểm tra `http://127.0.0.1:8000/health` |
 | Trang cần đăng nhập không tự chuyển hướng khi thiếu cookie | Chưa tạo/chưa cập nhật `matcher` trong `src/middleware.js` | Thêm path vào `config.matcher` |
+| `Headers.append: "..." is an invalid header value` | Chuỗi trong dấu backtick bị xuống dòng thật giữa chừng (do copy/dán bị wrap) | Đảm bảo mỗi `headers.append(...)` nằm gọn 1 dòng, không Enter giữa chừng |
+| 401 với response `{"detail":"Not authenticated"}` (không phải câu chữ tự viết) | Request bị `rewrites` "cướp" trước khi tới được `route.js` — do (a) rewrites dạng mảng đơn giản nằm trước route động `[id]` trong thứ tự xử lý, hoặc (b) tên thư mục trong `api/` viết sai/thiếu chữ so với path thật của backend | (a) Đổi `rewrites()` sang dạng `{ beforeFiles: [], afterFiles: [], fallback: [...] }`, đặt rewrites `/api/:path*` vào `fallback`. (b) Kiểm tra lại chính xác từng chữ trong tên thư mục `api/...` khớp với path backend (số ít/số nhiều, viết hoa/thường) |
+| 401 với response đúng câu chữ tự viết (`"Token hết hạn..."`, `"Vui lòng đăng nhập"`) | `route.js` chạy đúng, nhưng cookie thiếu hoặc token Firebase đã hết hạn (idToken chỉ sống 1 giờ, không phụ thuộc Max-Age của cookie) | Đăng xuất/đăng nhập lại để lấy token mới; test lại ngay sau khi đăng nhập |
+| Thêm giỏ hàng/viết đánh giá luôn báo "cần đăng nhập" dù đã đăng nhập | Component (CartContext...) vẫn tự đọc `localStorage.getItem('auth_token')` — giá trị luôn `null` vì token giờ là cookie `httpOnly` | Bỏ hẳn logic đọc `localStorage`, gọi thẳng `fetch('/api/...')` không kèm token — để trình duyệt tự gửi cookie, Route Handler phía server tự đọc và gắn `Authorization` |
 
 ---
 
