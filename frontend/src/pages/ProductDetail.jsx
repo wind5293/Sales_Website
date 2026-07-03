@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import axios from "axios";
 import { formatPrice } from "../utils/format";
 import ProductReviews from "../features/reviews/ProductReviews";
+import ProductCard from '../components/ProductCard';
 
 /**
  * ProductDetail
@@ -19,6 +20,7 @@ const ProductDetail = ({ currentUserId = null, currentUserName = null }) => {
     const [error, setError] = useState(false);
     const [activeImage, setActiveImage] = useState(null);
     const [cartMsg, setCartMsg] = useState('');
+    const [relatedProducts, setRelatedProducts] = useState([]);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -27,6 +29,10 @@ const ProductDetail = ({ currentUserId = null, currentUserName = null }) => {
             try {
                 const res = await axios.get(`/api/products/${id}`);
                 setProduct(res.data);
+
+                const relatedRes = await axios.get(`/api/products/${id}/related?limit=8`);
+                setRelatedProducts(relatedRes.data.products);
+
                 setActiveImage(res.data.thumbnailUrl || (res.data.images && res.data.images[0]) || null);
             } catch (err) {
                 setError(true);
@@ -218,6 +224,32 @@ const ProductDetail = ({ currentUserId = null, currentUserName = null }) => {
                     currentUserId={currentUserId}
                     currentUserName={currentUserName}
                 />
+
+                {/* Sản phẩm liên quan */}
+                {relatedProducts.length > 0 && (
+                    <div className="mt-8 space-y-6">
+                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span className="w-1 h-5 bg-amber-400 rounded inline-block"></span>
+                            Sản phẩm liên quan
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {relatedProducts.map((p) => (
+                                <Link to={`/product/${p.id}`} key={p.id}>
+                                    <ProductCard
+                                        id={p.id}
+                                        image={p.thumbnailUrl}
+                                        category={p.categoryName}
+                                        title={p.name}
+                                        price={p.price}
+                                        oldPrice={p.originalPrice}
+                                        discountPercent={p.discountPercent}
+                                        status={p.status}
+                                    />
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>

@@ -12,6 +12,7 @@ const Homepage = () => {
     const [activeTab, setActiveTab] = useState('featured');
     const [categories, setCategories] = useState([]);
     const [heroProduct, setHeroProduct] = useState(null);
+    const [newProducts, setNewProducts] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,6 +30,9 @@ const Homepage = () => {
                 // Lấy danh mục
                 const catRes = await axios.get('/api/products/category/all');
                 setCategories(catRes.data.categories);
+
+                const newRes = await axios.get('/api/products/new?limit=8');
+                setNewProducts(newRes.data.products)
 
             } catch (err) {
                 console.error("Lỗi khi tải dữ liệu:", err);
@@ -199,6 +203,37 @@ const Homepage = () => {
                         </section>
                     );
                 })()}
+
+                {/* SECTION 2.5: SẢN PHẨM MỚI */}
+                {newProducts.length > 0 && (
+                    <section className="space-y-6">
+                        <div className="border-b border-slate-100 pb-3 flex justify-between items-end">
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span className="w-1 h-5 bg-amber-400 rounded inline-block"></span>
+                                Sản phẩm mới
+                            </h2>
+                            <Link to="/search" className="text-xs text-amber-500 font-semibold hover:underline">
+                                Xem tất cả
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {newProducts.map((product) => (
+                                <Link to={`/product/${product.id}`} key={product.id}>
+                                    <ProductCard
+                                        id={product.id}
+                                        image={product.thumbnailUrl}
+                                        category={product.categoryName}
+                                        title={product.name}
+                                        price={product.price}
+                                        oldPrice={product.originalPrice}
+                                        discountPercent={product.discountPercent}
+                                        status={product.status}
+                                    />
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {/* SECTION 3: DANH SÁCH SẢN PHẨM */}
                 <section id="products" className="space-y-6">

@@ -138,6 +138,46 @@ def filter_products(
         "limit": limit,
         "skip": skip,
     }
+    
+    
+@router.get("/new")
+def get_new_products(limit: int = Query(8, le=20)):
+    """Sản phẩm mới nhất — sort theo createdAt descending."""
+    docs = (
+        db.collection("products")
+        .where("status", "==", "active")
+        .order_by("createdAt", direction="DESCENDING")
+        .limit(limit)
+        .stream()
+    )
+    return {"products": [{"id": doc.id, **doc.to_dict()} for doc in docs]}
+
+
+@router.get("/{product_id}/related")
+def get_related_products(product_id: str, limit: int = Query(8, le=20)):
+    """Sản phẩm liên quan — cùng categoryId, loại trừ sản phẩm hiện tại."""
+    doc = db.collection("products").document(product_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
+
+    category_id = doc.to_dict().get("categoryId")
+    if not category_id:
+        return {"products": []}
+
+    docs = (
+        db.collection("products")
+        .where("categoryId", "==", category_id)
+        .where("status", "==", "active")
+        .limit(limit + 1)  # lấy dư 1 để bù cho việc loại sản phẩm hiện tại
+        .stream()
+    )
+    products = [
+        {"id": d.id, **d.to_dict()}
+        for d in docs
+        if d.id != product_id
+    ][:limit]
+
+    return {"products": products}
 
 
 @router.get("/{product_id}")
