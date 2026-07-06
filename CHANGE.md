@@ -25,7 +25,7 @@ Nguyên tắc cốt lõi xuyên suốt cả dự án:
 - [x] Cài `axios`, `firebase`
 - [x] `next.config.mjs` — rewrites `/api/*` → backend (thay proxy Vite cũ)
 - [x] `.env.local` — chứa `BACKEND_URL`
-- [x] `src/lib/auth.server.js` — `getCurrentUser()`, `getIsAdmin()`
+- [x] `src/lib/auth.server.js` — `getCurrentUser()`, `getIsAdmin()`, `getAuthHeader()` (thêm sau, dùng để gắn `Authorization: Bearer ...` khi Server Component / Route Handler cần gọi `apiServer()` hoặc `fetch()` tới endpoint yêu cầu đăng nhập)
 - [x] `src/app/api/auth/login/route.js` — set cookie khi đăng nhập
 - [x] `src/app/api/auth/logout/route.js` — xoá cookie khi đăng xuất
 - [x] `src/components/CartContext.jsx` → thêm `'use client'`
@@ -39,6 +39,8 @@ Nguyên tắc cốt lõi xuyên suốt cả dự án:
 
 ## 3. Việc còn lại — theo thứ tự nên làm
 
+> **Trạng thái hiện tại:** Nhóm A, B, C đã xong. Tiếp theo là **Nhóm D (Checkout)** rồi tới **Nhóm E (Admin)**.
+
 ### Nhóm A — Auth (đã xong)
 - [x] `Signup.jsx` → gộp 1 file `src/app/signup/page.jsx` (không cần Route Handler riêng vì không set cookie)
 
@@ -47,15 +49,18 @@ Nguyên tắc cốt lõi xuyên suốt cả dự án:
 - [x] Reviews (`ProductReviews`, `ReviewCard`, `WriteReviewModal`) → `'use client'` + Route Handler `src/app/api/products/[id]/reviews/route.js`
 - [x] Cart (`CartContext`) → bỏ localStorage, dùng Route Handler `src/app/api/cart/route.js` + `src/app/api/cart/item/[id]/route.js`
 - [x] Sửa `next.config.mjs` — rewrites dùng cấu trúc `{ beforeFiles, afterFiles, fallback }`, đặt trong `fallback` để không "cướp" route động
-- [ ] `SearchPage.jsx` → `src/app/search/page.jsx`. Đọc query `?q=` và `?category=` qua `searchParams` (Next.js truyền sẵn vào Server Component, không cần `useSearchParams` như React Router)
-- [ ] `CategoryPage.jsx` → hiện tại chỉ redirect sang `/search?category=...`, xử lý bằng cách redirect ngay trong Server Component (`redirect()` từ `next/navigation`), không cần tạo component riêng
+- [x] `SearchPage.jsx` → `src/app/search/page.jsx`. Đọc query `?q=` và `?category=` qua `searchParams` (Next.js truyền sẵn vào Server Component, không cần `useSearchParams` như React Router)
+- [x] `CategoryPage.jsx` → hiện tại chỉ redirect sang `/search?category=...`, xử lý bằng cách redirect ngay trong Server Component (`redirect()` từ `next/navigation`), không cần tạo component riêng
 
-### Nhóm C — Trang cần đăng nhập (bảo vệ bằng middleware)
-- [ ] Tạo `src/middleware.js` chặn `/profile/*`, `/orders/*`, `/checkout`, `/admin/*` nếu thiếu cookie
-- [ ] `Profile.jsx` → `src/app/profile/page.jsx`
-- [ ] `AddressBook.jsx` → `src/app/profile/addresses/page.jsx`
-- [ ] `ChangePassword.jsx` → `src/app/profile/change-password/page.jsx`
-- [ ] `Orders.jsx` → `src/app/orders/page.jsx`
+### Nhóm C — Trang cần đăng nhập (bảo vệ bằng middleware) — ĐÃ XONG ✅
+- [x] Tạo `src/middleware.js` chặn `/profile/*`, `/orders/*`, `/checkout`, `/admin/*` nếu thiếu cookie
+- [x] `Profile.jsx` → `src/app/profile/page.jsx`
+- [x] `AddressBook.jsx` → `src/app/profile/addresses/page.jsx` + `src/app/api/users/addresses/route.js` + `src/app/api/users/addresses/[id]/route.js`
+- [x] `ChangePassword.jsx` → `src/app/profile/change-password/page.jsx` + `src/app/api/users/change-password/route.js`
+- [x] `Orders.jsx` → `src/app/orders/page.jsx` (Server, fetch trang đầu) + `src/features/orders/OrdersClient.jsx` (Client, tab/phân trang) + `src/app/api/orders/route.js` + `src/app/api/orders/[id]/route.js`
+  - Các file phụ trong `src/features/orders/`: `OrderCard.jsx`, `OrderComponents.jsx`, `OrderDetail.jsx`, `orderConstants.js`, `useOrders.js`
+  - ⚠️ Đã sửa 1 bug có sẵn từ bản CSR: `TABS` dùng key `"shipped"` nhưng `STATUS_CONFIG` dùng key `"shipping"` → đã đồng bộ về `"shipping"`. Kiểm tra lại giá trị status thật mà backend trả về nếu tab "Đang giao" hiển thị sai.
+  - Link "Chi tiết đầy đủ" trong `OrderDetail.jsx` trỏ tới `/orders/[id]` — **trang này chưa tồn tại**, cần làm nếu muốn xem chi tiết 1 đơn hàng riêng lẻ (chưa nằm trong checklist gốc, cân nhắc thêm vào Nhóm D hoặc làm riêng).
 
 ### Nhóm D — Phức tạp nhất, làm sau cùng
 - [ ] `CheckoutPage.jsx` → `src/app/checkout/page.jsx` (nhiều state, form, có thể giữ phần lớn là Client Component, chỉ SSR phần lấy thông tin giỏ hàng ban đầu)
@@ -78,6 +83,14 @@ Nguyên tắc cốt lõi xuyên suốt cả dự án:
 - [ ] Cập nhật script deploy/CI trỏ vào thư mục mới
 
 ---
+
+## 3.5. Ghi chú / bài học từ Nhóm C (auth, orders, addresses)
+
+- **Cấu trúc thư mục thật dùng `src/features/<domain>/`** (ví dụ `src/features/orders/`), không phải `src/components/<domain>/` — khi nhờ AI hoặc tự viết code mới, luôn chỉ rõ đường dẫn thật để tránh sai import `@/...`.
+- **`apiServer()` (trong `src/lib/api.server.js`) chỉ là `fetch` trần, không tự đọc cookie/gắn token.** Với endpoint public (Homepage, ProductDetail) không sao vì backend không cần auth. Với endpoint cần đăng nhập (orders, addresses, change-password...) bắt buộc phải tự lấy header trước bằng `getAuthHeader()` rồi truyền vào qua `options.headers` — không được quên bước này.
+- **Không có file `src/lib/apiProxy.js`** — dù có lúc nhắc tới, thực tế dự án chỉ dùng `getAuthHeader()` từ `auth.server.js`. Các Route Handler (`api/orders/route.js`, `api/users/addresses/route.js`...) tự đọc `res.text()` rồi `JSON.parse` (parse an toàn khi body rỗng, ví dụ response `204 No Content` của DELETE) thay vì gọi hàm dùng chung `safeJson`. Nếu sau này muốn dọn code sạch hơn, có thể cân nhắc tạo `apiProxy.js` thật để không lặp lại đoạn parse này ở từng route — nhưng hiện tại code đang chạy đúng theo cách viết trực tiếp từng file.
+- **Lỗi 500 không phải lúc nào cũng do Next.js.** Khi Route Handler trả JSON.parse lỗi kiểu `"Internal S..."`, nhiều khả năng backend FastAPI đang tự crash — cần xem log `uvicorn`, không chỉ debug phía Next.js.
+- **Firestore composite index:** endpoint `GET /api/orders` (backend, `orders.py`) filter theo nhiều field (`status`, `userId`) + sort (`createdAt`) cùng lúc, nên mỗi tổ hợp filter khác nhau (theo từng `status`, và cả trường hợp không filter status) cần 1 composite index riêng trong Firestore. Nếu sau này thêm tab/filter mới cho Orders (hoặc áp dụng pattern tương tự cho trang khác dùng Firestore), nhớ test từng tổ hợp filter một lần để trigger sớm các lỗi `FailedPrecondition: The query requires an index` và tạo index qua link Firebase Console mà log Python cung cấp.
 
 ## 4. "Cheat sheet" — quy tắc áp dụng cho MỌI file khi chuyển
 

@@ -78,7 +78,7 @@ const Navbar = ({ username, isAdmin, onSearch, onCartClick }) => {
     };
 
     const handleCategoryClick = (cat) => {
-        router.push(`/category/${cat.id}`);
+        router.push(`/search?category=${cat.id}`);
         setShowCategory(false);
     };
 
@@ -107,11 +107,10 @@ const Navbar = ({ username, isAdmin, onSearch, onCartClick }) => {
 
     const handleSearchKeyDown = (e) => {
         if (e.key === 'Enter') {
-            // Kiểm tra nếu người dùng có nhập chữ mới cho tìm kiếm
-            if (searchQuery.trim() !== '') {
-                if (onSearch) onSearch(searchQuery);
-                // Tùy chọn: Xóa ô tìm kiếm sau khi enter
-                // setSearchQuery(''); 
+            const trimmed = searchQuery.trim();
+            if (trimmed !== '') {
+                router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+                if (onSearch) onSearch(trimmed);
             }
         }
     };
@@ -288,7 +287,7 @@ const Navbar = ({ username, isAdmin, onSearch, onCartClick }) => {
                                             <div
                                                 onClick={() => {
                                                     setShowPopup(false);
-                                                    navigate("/admin");
+                                                    router.push("/admin");
                                                 }}
                                                 className="px-4 py-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-3 border-b border-amber-100"
                                             >
@@ -303,7 +302,7 @@ const Navbar = ({ username, isAdmin, onSearch, onCartClick }) => {
                                     {USER_MENU_ITEMS.map((item) => (
                                         <div
                                             key={item.id}
-                                            onClick={() => handleUserMenuClick(item.path)}
+                                            onClick={() => router.push(item.path)}
                                             className="px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-3"
                                         >
                                             <i className={`${item.icon} w-4 text-center text-gray-400`}></i>
