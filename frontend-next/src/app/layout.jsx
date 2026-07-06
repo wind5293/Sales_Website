@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import { CartProvider } from '@/context/CartContext';
 import { getCurrentUser, getIsAdmin } from '@/lib/auth.server';
 import CartDrawer from '@/components/CartDrawner';
+import SiteChrome from '@/components/SiteChrome';
 
 export default async function RootLayout({ children }) {
     const user = await getCurrentUser();
@@ -23,10 +24,9 @@ export default async function RootLayout({ children }) {
             </head>
             <body>
                 <CartProvider>
-                    <Navbar username={user?.name || 'Welcome'} isAdmin={isAdmin} />
-                    <CartDrawer />
-                    {children}
-                     <Footer />
+                    <SiteChrome username={user?.name || 'Welcome'} isAdmin={isAdmin}>
+                        {children}
+                    </SiteChrome>
                 </CartProvider>
             </body>
         </html>

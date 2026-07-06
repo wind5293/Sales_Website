@@ -63,12 +63,18 @@ Nguyên tắc cốt lõi xuyên suốt cả dự án:
   - Link "Chi tiết đầy đủ" trong `OrderDetail.jsx` trỏ tới `/orders/[id]` — **trang này chưa tồn tại**, cần làm nếu muốn xem chi tiết 1 đơn hàng riêng lẻ (chưa nằm trong checklist gốc, cân nhắc thêm vào Nhóm D hoặc làm riêng).
 
 ### Nhóm D — Phức tạp nhất, làm sau cùng
-- [ ] `CheckoutPage.jsx` → `src/app/checkout/page.jsx` (nhiều state, form, có thể giữ phần lớn là Client Component, chỉ SSR phần lấy thông tin giỏ hàng ban đầu)
+- [x] `CheckoutPage.jsx` → `src/app/checkout/page.jsx` (nhiều state, form, có thể giữ phần lớn là Client Component, chỉ SSR phần lấy thông tin giỏ hàng ban đầu)
 
 ### Nhóm E — Admin (copy gần như nguyên, không cần SSR)
-- [ ] `components/AdminRoute.jsx` → xoá, thay bằng middleware (đã gộp vào Nhóm C)
-- [ ] `pages/admin/AdminDashboard.jsx` + `components/admin/AdminSidebar.jsx` → `src/app/admin/layout.jsx`
-- [ ] `pages/admin/admin_pages/Overview.jsx` → `src/app/admin/page.jsx`
+- [x] `components/AdminRoute.jsx` → **xoá hẳn**, không cần nữa vì `middleware.js` đã chặn `/admin/*` bằng cookie `admin_token`
+- [x] `pages/admin/AdminDashboard.jsx` + `components/admin/AdminSidebar.jsx` → `src/app/admin/layout.jsx`
+  - Đổi từ mô hình "1 trang, switch section bằng state `active`" sang **route thật theo file-system** (`/admin`, `/admin/products`, `/admin/orders`...). `layout.jsx` giờ chỉ còn nhiệm vụ bọc `AdminSidebar` + `Toast` quanh `{children}`, không tự switch component nữa.
+  - `AdminSidebar.jsx`: bỏ prop `active`/`onNavigate`, tự dùng `usePathname()` để biết mục nào đang active; dùng `<Link href>` thay vì `<button onClick={onNavigate}>`.
+  - Toast không còn truyền qua props giữa các section — dùng chung 1 Context: `src/context/AdminToastContext.jsx` (file mới, export `useAdminToast()`). Mỗi trang con gọi `const toast = useAdminToast();` thay vì nhận `{ toast }` qua props.
+- [x] `pages/admin/admin_pages/Overview.jsx` → `src/app/admin/page.jsx` (đã chuyển xong, dùng `useAdminToast()`)
+- [x] `src/components/admin/AdminUI.jsx` → thêm `'use client'`, sửa import path, giữ nguyên nội dung (`Spinner`, `Toast`, `Badge`, `Pagination`)
+- [x] `src/utils/admin/helpers.js` → copy nguyên, không đổi (`fmt`, `fmtVND`, `fmtDate`, `STATUS_MAP`, `NAV`)
+- [x] `src/utils/admin/adminApi.js` → copy nguyên, không đổi (axios instance `withCredentials: true`, tự đọc cookie `admin_token` khi gọi `/api/admin/*` nhờ `next.config.mjs` rewrites)
 - [ ] `pages/admin/admin_pages/Products.jsx` → `src/app/admin/products/page.jsx`
 - [ ] `pages/admin/admin_pages/Users.jsx` → `src/app/admin/users/page.jsx`
 - [ ] `pages/admin/admin_pages/Orders.jsx` → `src/app/admin/orders/page.jsx`

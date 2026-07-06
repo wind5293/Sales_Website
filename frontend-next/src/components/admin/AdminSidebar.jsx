@@ -1,9 +1,13 @@
-import { useNavigate } from "react-router-dom";
-import { NAV } from "../../utils/admin/helpers";
-import adminApi from "../../utils/admin/adminApi";
+'use client';
 
-export default function AdminSidebar({ active, onNavigate }) {
-    const navigate = useNavigate();
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { NAV } from "@/utils/admin/helpers";
+import adminApi from "@/utils/admin/adminApi";
+
+export default function AdminSidebar() {
+    const pathname = usePathname();
+    const router = useRouter();
 
     const adminInfo = (() => {
         try { return JSON.parse(localStorage.getItem("admin_info") || "{}"); }
@@ -14,17 +18,18 @@ export default function AdminSidebar({ active, onNavigate }) {
         try {
             await adminApi.post("/api/admin/logout");
         } catch {
-            
+
         } finally {
             localStorage.removeItem("admin_info");
-            navigate("/login");
+            router.push("/login");
         }
     };
+
+    const hrefFor = (id) => (id === "overview" ? "/admin" : `/admin/${id.replace(/_/g, "-")}`);
 
     return (
         <aside className="w-60 shrink-0 bg-white border-r border-gray-100 flex flex-col shadow-sm">
 
-            {/* Logo */}
             <div className="px-6 py-5 border-b border-gray-100">
                 <span className="text-xl font-bold text-gray-900">
                     electro<span className="text-amber-500">.</span>
@@ -35,25 +40,27 @@ export default function AdminSidebar({ active, onNavigate }) {
                 </div>
             </div>
 
-            {/* Nav */}
             <nav className="flex-1 px-3 py-4 space-y-0.5">
-                {NAV.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => onNavigate(item.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-all
-                            ${active === item.id
-                                ? "bg-amber-400 text-gray-900 shadow-xs"
-                                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                            }`}
-                    >
-                        <i className={`${item.icon} w-4 text-center ${active === item.id ? "text-gray-900" : "text-gray-400"}`}></i>
-                        {item.label}
-                    </button>
-                ))}
+                {NAV.map((item) => {
+                    const href = hrefFor(item.id);
+                    const isActive = pathname === href;
+                    return (
+                        <Link
+                            key={item.id}
+                            href={href}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-all
+                                ${isActive
+                                    ? "bg-amber-400 text-gray-900 shadow-xs"
+                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                }`}
+                        >
+                            <i className={`${item.icon} w-4 text-center ${isActive ? "text-gray-900" : "text-gray-400"}`}></i>
+                            {item.label}
+                        </Link>
+                    );
+                })}
             </nav>
 
-            {/* Admin info + logout */}
             <div className="px-3 py-4 border-t border-gray-100">
                 <div className="flex items-center gap-3 px-3 py-2 mb-2">
                     <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -71,13 +78,13 @@ export default function AdminSidebar({ active, onNavigate }) {
                     <i className="fas fa-sign-out-alt w-4 text-center"></i>
                     Đăng xuất
                 </button>
-                <button
-                    onClick={() => navigate("/")}
+                <Link
+                    href="/"
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors font-medium"
                 >
                     <i className="fas fa-store w-4 text-center"></i>
                     Về trang khách hàng
-                </button>
+                </Link>
             </div>
         </aside>
     );

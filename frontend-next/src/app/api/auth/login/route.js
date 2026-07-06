@@ -40,16 +40,23 @@ export async function POST(req) {
     const adminData = await adminRes.json();
 
     if (adminRes.ok) {
+        const setCookieHeaders = typeof adminRes.headers.getSetCookie === 'function'
+            ? adminRes.headers.getSetCookie()
+            : [adminRes.headers.get('set-cookie')].filter(Boolean);
+
+        const adminTokenCookie = setCookieHeaders.find((c) => c.startsWith('admin_token='));
+        const adminToken = adminTokenCookie ? adminTokenCookie.split(';')[0].split('=')[1] : null;
+
+        if (!adminToken) {
+            console.error('[admin login] Không tìm thấy admin_token trong Set-Cookie header từ backend');
+            return Response.json({ detail: 'Đăng nhập quản trị thất bại (không nhận được token)' }, { status: 500 });
+        }
+
         const res = Response.json({
             message: '🛡️ Đăng nhập quản trị thành công! Đang chuyển hướng...',
             username: adminData.admin_info.email,
         });
-        setAuthCookies(res, {
-            token: adminData.access_token,
-            userName: adminData.admin_info.email,
-            isAdmin: true,
-            adminInfo: adminData.admin_info,
-        });
+        setAdminCookie(res, adminToken, adminData.admin_info);
         return res;
     }
 
@@ -67,4 +74,12 @@ function setAuthCookies(res, { token, userName, userData, isAdmin, adminInfo }) 
     res.headers.append('Set-Cookie', `user_name=${encodeURIComponent(userName)}; ${common}`);
     if (userData) res.headers.append('Set-Cookie', `user_data=${encodeURIComponent(JSON.stringify(userData))}; HttpOnly; ${common}`);
     if (isAdmin) res.headers.append('Set-Cookie', `admin_info=${encodeURIComponent(JSON.stringify(adminInfo))}; HttpOnly; ${common}`);
+}
+
+function setAdminCookie(res, token, adminInfo) {
+    // TODO: đối chiếu lại với ACCESS_TOKEN_EXPIRE_HOURS thật trong app/core/config.py
+    const common = 'Path=/; SameSite=Lax; Max-Age=86400' + (process.env.NODE_ENV === 'production' ? '; Secure' : '');
+    res.headers.append('Set-Cookie', `admin_token=${token}; HttpOnly; ${common}`);
+    res.headers.append('Set-Cookie', `admin_info=${encodeURIComponent(JSON.stringify(adminInfo))}; ${common}`);
+    res.headers.append('Set-Cookie', `user_name=${encodeURIComponent(adminInfo.email)}; ${common}`);
 }
