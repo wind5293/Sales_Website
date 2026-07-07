@@ -1,5 +1,6 @@
+'use client';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 const PAYMENT_METHODS = ['Visa', 'Mastercard', 'MoMo', 'ZaloPay', 'VNPay'];
 
@@ -150,7 +151,7 @@ const Footer = () => {
                 <div className="border-t border-white/10 mt-10 pt-6 flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-400">
                     {['iPhone', 'iPad', 'MacBook', 'Apple Watch', 'AirPods', 'Phụ kiện'].map((cat, i, arr) => (
                         <React.Fragment key={cat}>
-                            <Link to="/" className="hover:text-[#fbbf24] transition-colors">{cat}</Link>
+                            <Link href="/" className="hover:text-[#fbbf24] transition-colors">{cat}</Link>
                             {i < arr.length - 1 && <span className="text-slate-700">|</span>}
                         </React.Fragment>
                     ))}

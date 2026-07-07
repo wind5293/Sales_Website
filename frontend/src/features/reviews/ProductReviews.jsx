@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import ReviewSummary from "./ReviewSummary";

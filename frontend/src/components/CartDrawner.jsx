@@ -1,11 +1,12 @@
+'use client';
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 
 const formatPrice = (price) => Number(price).toLocaleString('vi-VN') + 'đ';
 
 const CartDrawer = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const { items, totalItems, totalPrice, loading, isOpen, closeCart, updateQuantity, removeItem } = useCart();
 
     // Đóng drawer khi bấm Escape
@@ -23,7 +24,7 @@ const CartDrawer = () => {
 
     const handleCheckout = () => {
         closeCart();
-        navigate('/checkout');
+        router.push('/checkout');
     };
 
     return (

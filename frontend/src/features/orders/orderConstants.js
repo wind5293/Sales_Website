@@ -45,7 +45,7 @@ export const TABS = [
     { key: "", label: "Tất cả" },
     { key: "pending", label: "Chờ xác nhận" },
     { key: "confirmed", label: "Đã xác nhận" },
-    { key: "shipped", label: "Đang giao" },
+    { key: "shipping", label: "Đang giao" }, // đổi từ "shipped" -> khớp với STATUS_CONFIG
     { key: "delivered", label: "Đã giao" },
     { key: "cancelled", label: "Đã huỷ" },
 ];

@@ -1,4 +1,5 @@
-import { formatPrice } from "../../utils/format";
+'use client';
+import { formatPrice } from "@/utils/format";
 import { STATUS_CONFIG } from "./orderConstants";
 import { StatusBadge } from "./OrderComponents";
 import OrderDetail from "./OrderDetail";

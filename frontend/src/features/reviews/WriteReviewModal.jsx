@@ -1,5 +1,5 @@
+'use client'
 import { useState } from "react";
-import axios from "axios";
 import StarRating from "../../components/ui/StarRating";
 import { RATING_LABELS } from "./reviewHelpers";
 
@@ -22,28 +22,29 @@ const WriteReviewModal = ({ productId, userId, userName, onClose, onSuccess }) =
         if (rating === 0) { setError("Vui lòng chọn số sao đánh giá."); return; }
         if (!text.trim()) { setError("Vui lòng nhập nội dung đánh giá."); return; }
 
-        const token = localStorage.getItem("auth_token");
-        if (!token) {
-            setError("Bạn cần đăng nhập để gửi đánh giá.");
-            return;
-        }
-
         setSubmitting(true);
         setError("");
         try {
-            await axios.post(`/api/products/${productId}/reviews`, {
-                user_id: userId,
-                user_name: userName,
-                rating,
-                title: title || RATING_LABELS[rating],
-                text: text.trim(),
-            },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+            const res = await fetch(`/api/products/${productId}/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    user_name: userName,
+                    rating,
+                    title: title || RATING_LABELS[rating],
+                    text: text.trim(),
+                }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(res.status === 401
+                    ? 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
+                    : (data.detail || 'Gửi đánh giá thất bại. Vui lòng thử lại.'));
+                return;
+            }
+
             onSuccess?.();
             onClose();
         } catch (err) {

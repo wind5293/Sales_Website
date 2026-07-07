@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect } from "react";
-import { STATUS_MAP } from "../../utils/admin/helpers";
+import { STATUS_MAP } from "@/utils/admin/helpers";
 
 // ── Loading spinner ───────────────────────────────────────────────────────────
 export const Spinner = () => (
@@ -16,7 +18,7 @@ export const Toast = ({ msg, type, onClose }) => {
     }, [onClose]);
 
     return (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl text-sm font-medium transition-all
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-medium transition-all
             ${type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
             <i className={type === "success" ? "fas fa-check-circle" : "fas fa-exclamation-circle"}></i>
             {msg}
@@ -47,14 +49,14 @@ export const Pagination = ({ page, pages, onPrev, onNext }) => {
                 <button
                     disabled={page === 0}
                     onClick={onPrev}
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                    className="px-3 py-1.5 rounded-sm border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
                 >
                     <i className="fas fa-chevron-left"></i>
                 </button>
                 <button
                     disabled={page >= pages - 1}
                     onClick={onNext}
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                    className="px-3 py-1.5 rounded-sm border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
                 >
                     <i className="fas fa-chevron-right"></i>
                 </button>

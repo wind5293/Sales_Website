@@ -1,6 +1,6 @@
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 
 const CATEGORY_ICONS = {
@@ -32,8 +32,8 @@ const USER_MENU_ITEMS = [
     }
 ];
 
-const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
-    const navigate = useNavigate();
+const Navbar = ({ username, isAdmin, onSearch, onCartClick }) => {
+    const router = useRouter();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [showPopup, setShowPopup] = useState(false);
@@ -41,32 +41,12 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     const [showLocation, setShowLocation] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState('Hồ Chí Minh');
     const [categories, setCategories] = useState([]);
-    const [isAdmin, setIsAdmin] = useState(false);
 
     const popupRef = useRef(null); 
     const categoryRef = useRef(null);
     const locationRef = useRef(null);
 
     const { totalItems, openCart, resetCart } = useCart();
-
-    useEffect(() => {
-        if (username === 'Welcome') {
-            setIsAdmin(false);
-            return;
-        }
-        const hasAdminInfo = Boolean(localStorage.getItem("admin_info"));
-        if (!hasAdminInfo) {
-            setIsAdmin(false);
-            return;
-        }
-        // Xác thực lại với server vì admin_info có thể còn sót nhưng cookie đã hết hạn
-        axios.get("/api/admin/me", { withCredentials: true })
-            .then(() => setIsAdmin(true))
-            .catch(() => {
-                setIsAdmin(false);
-                localStorage.removeItem("admin_info");
-            });
-    }, [username]);
 
     useEffect(() => {
         fetch('/api/products/category/all')
@@ -94,17 +74,17 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
     ];
 
     const handleHomeClick = () => {
-        navigate('/');
+        router.push('/');
     };
 
     const handleCategoryClick = (cat) => {
-        navigate(`/category/${cat.id}`);
+        router.push(`/search?category=${cat.id}`);
         setShowCategory(false);
     };
 
     const handleAccountClick = () => {
         if (username === 'Welcome') {
-            navigate('/login');
+            router.push('/login');
         } else {
             setShowPopup(!showPopup);
             setShowCategory(false);
@@ -114,37 +94,23 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
 
     const handleUserMenuClick = (path) => {
         setShowPopup(false); // Đóng popup
-        navigate(path);      // Chuyển trang
+        router.push(path);      // Chuyển trang
     };
 
     const handleLogout = async () => {
-        try {
-            await axios.post('/api/admin/logout', {}, { withCredentials: true });
-        } catch {
-            
-        }
-
-        localStorage.removeItem('user_name');
-        localStorage.removeItem('user_email');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
-        localStorage.removeItem('admin_info');
-
-        localStorage.clear();
+        await fetch('/api/auth/logout', { method: 'POST' });
         resetCart();
-
         setShowPopup(false);
-        if (onLogout) onLogout();
-        navigate('/');
+        router.push('/');
+        router.refresh();
     };
 
     const handleSearchKeyDown = (e) => {
         if (e.key === 'Enter') {
-            // Kiểm tra nếu người dùng có nhập chữ mới cho tìm kiếm
-            if (searchQuery.trim() !== '') {
-                if (onSearch) onSearch(searchQuery);
-                // Tùy chọn: Xóa ô tìm kiếm sau khi enter
-                // setSearchQuery(''); 
+            const trimmed = searchQuery.trim();
+            if (trimmed !== '') {
+                router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+                if (onSearch) onSearch(trimmed);
             }
         }
     };
@@ -321,7 +287,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                                             <div
                                                 onClick={() => {
                                                     setShowPopup(false);
-                                                    navigate("/admin");
+                                                    router.push("/admin");
                                                 }}
                                                 className="px-4 py-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-3 border-b border-amber-100"
                                             >
@@ -336,7 +302,7 @@ const Navbar = ({ onNavigate, username, onLogout, onSearch, onCartClick }) => {
                                     {USER_MENU_ITEMS.map((item) => (
                                         <div
                                             key={item.id}
-                                            onClick={() => handleUserMenuClick(item.path)}
+                                            onClick={() => router.push(item.path)}
                                             className="px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors cursor-pointer flex items-center gap-3"
                                         >
                                             <i className={`${item.icon} w-4 text-center text-gray-400`}></i>

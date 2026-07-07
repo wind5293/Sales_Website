@@ -1,16 +1,16 @@
+'use client';
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { OrderTimeline } from "./OrderComponents";
-import axiosAuth from "../../utils/axiosAuth";
 
 const OrderDetail = ({ orderId }) => {
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        axiosAuth
-            .get(`/api/orders/${orderId}`)
-            .then((res) => setDetail(res.data))
+        fetch(`/api/orders/${orderId}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => setDetail(data))
             .catch(() => { })
             .finally(() => setLoading(false));
     }, [orderId]);
@@ -40,7 +40,7 @@ const OrderDetail = ({ orderId }) => {
             )}
             <div className="mt-4 flex gap-2 justify-end">
                 <Link
-                    to={`/orders/${orderId}`}
+                    href={`/orders/${orderId}`}
                     className="text-xs font-semibold text-amber-600 hover:text-amber-700 border border-amber-300 hover:border-amber-400 px-3 py-1.5 rounded-sm transition-colors"
                 >
                     <i className="fas fa-file-alt mr-1.5" />

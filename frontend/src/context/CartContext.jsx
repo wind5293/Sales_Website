@@ -1,12 +1,7 @@
+'use client';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 
 const CartContext = createContext(null);
-
-const getAuthHeader = () => {
-    const token = localStorage.getItem('auth_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 export const CartProvider = ({ children }) => {
     const [items, setItems] = useState([]);
@@ -23,19 +18,13 @@ export const CartProvider = ({ children }) => {
 
     // Lấy giỏ hàng từ server
     const fetchCart = useCallback(async () => {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-            setItems([]);
-            setTotalItems(0);
-            setTotalPrice(0);
-            return;
-        }
         try {
             setLoading(true);
-            const res = await axios.get('/api/cart', { headers: getAuthHeader() });
-            setItems(res.data.items || []);
-            setTotalItems(res.data.totalItems || 0);
-            setTotalPrice(res.data.totalPrice || 0);
+            const res = await fetch('/api/cart');
+            const data = await res.json();
+            setItems(data.items || []);
+            setTotalItems(data.totalItems || 0);
+            setTotalPrice(data.totalPrice || 0);
         } catch (err) {
             console.error('Lỗi tải giỏ hàng:', err);
         } finally {
@@ -46,34 +35,23 @@ export const CartProvider = ({ children }) => {
     // Tải giỏ hàng khi app khởi động
     useEffect(() => {
         fetchCart();
-        
-        const onStorageChange = (e) => {
-            if (e.key === 'auth_token') {
-                if (e.newValue) fetchCart();
-                else resetCart();
-            }
-        };
-        window.addEventListener('storage', e => onStorageChange(e));
-        return () => window.removeEventListener('storage', onStorageChange);
-    }, [fetchCart, resetCart]);
+    }, [fetchCart]);
 
     // Thêm sản phẩm vào giỏ
     const addToCart = async (productId, quantity = 1) => {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return { success: false, message: 'Vui lòng đăng nhập để thêm vào giỏ hàng' };
-
         try {
-            await axios.post(
-                '/api/cart',
-                { productId, quantity },
-                { headers: getAuthHeader() }
-            );
+            const res = await fetch('/api/cart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId, quantity }),
+            });
+            const data = await res.json();
+            if (!res.ok) return { success: false, message: data.detail || 'Không thể thêm vào giỏ hàng' };
             await fetchCart();
-            setIsOpen(true); // tự mở drawer sau khi thêm
+            setIsOpen(true);
             return { success: true };
-        } catch (err) {
-            const msg = err.response?.data?.detail || 'Không thể thêm vào giỏ hàng';
-            return { success: false, message: msg };
+        } catch {
+            return { success: false, message: 'Không thể thêm vào giỏ hàng' };
         }
     };
 
@@ -85,11 +63,11 @@ export const CartProvider = ({ children }) => {
             return;
         }
         try {
-            await axios.patch(
-                `/api/cart/item/${cartItemId}`,
-                { quantity },
-                { headers: getAuthHeader() }
-            );
+            await fetch(`/api/cart/item/${cartItemId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity }),
+            });
             await fetchCart();
         } catch (err) {
             console.error('Lỗi cập nhật:', err);
@@ -99,7 +77,7 @@ export const CartProvider = ({ children }) => {
     // Xóa một sản phẩm
     const removeItem = async (cartItemId) => {
         try {
-            await axios.delete(`/api/cart/item/${cartItemId}`, { headers: getAuthHeader() });
+            await fetch(`/api/cart/item/${cartItemId}`, { method: 'DELETE' });
             await fetchCart();
         } catch (err) {
             console.error('Lỗi xóa sản phẩm:', err);
@@ -109,10 +87,8 @@ export const CartProvider = ({ children }) => {
     // Xóa toàn bộ giỏ
     const clearCart = async () => {
         try {
-            await axios.delete('/api/cart', { headers: getAuthHeader() });
-            setItems([]);
-            setTotalItems(0);
-            setTotalPrice(0);
+            await fetch('/api/cart', { method: 'DELETE' });
+            setItems([]); setTotalItems(0); setTotalPrice(0);
         } catch (err) {
             console.error('Lỗi xóa giỏ:', err);
         }
