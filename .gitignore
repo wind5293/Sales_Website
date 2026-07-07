@@ -1,18 +1,35 @@
-# Bỏ qua thư mục node_modules của frontend
-frontend/node_modules/
+# ── Next.js (frontend) ────────────────────────────────────────────────────────
+frontend-next/node_modules/
+frontend-next/.next/
+frontend-next/out/
+
+frontend-next/dist/
+frontend-next/dist-ssr/
+
+# Build artifact cũ từ thời Vite — có thể xoá dòng này khi README đã cập nhật
+# và chắc chắn không còn build Vite nữa
 frontend/dist/
 frontend/dist-ssr/
 
-# Bỏ qua các file Python ở ngoài nếu cần
+# ── Python (backend) — sẽ xoá hẳn theo kế hoạch, nhưng ignore trong lúc còn tồn tại ──
 __pycache__/
 *.pyc
+backend/venv/
+backend/.venv/
 
-# Bỏ qua file chứa key bảo mật
+# ── Biến môi trường ────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── File chứa key bảo mật (cả vị trí cũ lẫn mới) ──────────────────────────────
 firebase-key.json
+backend/firebase-key.json
+frontend/firebase-key.json
 
+# ── Tài liệu nội bộ, không cần lên repo public/chia sẻ ────────────────────────
 API.md
 ARCHITECTURE.md
 PROJECT.md
 ISSUES_AND_GAPS.md
 CHANGE.md
-.env

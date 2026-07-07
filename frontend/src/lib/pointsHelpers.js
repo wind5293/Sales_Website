@@ -25,7 +25,16 @@ export function nextRankName(rank) {
     return null;
 }
 
-/** Tương đương generate_voucher_code() — mã dạng XXXX-XXXX-XX. */
+export async function logPointsTransaction(dbAdmin, { userId, delta, reason, orderId = null }) {
+    await dbAdmin.collection('points_history').add({
+        userId,
+        delta,
+        reason,
+        orderId,
+        createdAt: new Date(),
+    });
+}
+
 export function generateVoucherCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let raw = '';
