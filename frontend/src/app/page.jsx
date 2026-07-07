@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import ProductCard from '@/components/ProductCard';
 import ProductTabs from '@/components/ProductTabs';
-import { apiServer } from '@/lib/api.server';
+import { listProducts, getNewProducts, listCategories } from '@/lib/services/products';
 
 export const metadata = { title: 'Trang chủ | Electro' };
 
@@ -11,9 +11,9 @@ const formatPrice = (price) => Number(price).toLocaleString('vi-VN') + 'đ';
 export default async function Homepage() {
     // 3 request chạy song song, thay cho 3 lệnh axios.get() nối tiếp trong useEffect cũ
     const [productsRes, catRes, newRes] = await Promise.all([
-        apiServer('/api/products?limit=100'),
-        apiServer('/api/products/category/all'),
-        apiServer('/api/products/new?limit=8'),
+        listProducts({ limit: 100 }),
+        listCategories(),
+        getNewProducts({ limit: 8 }),
     ]);
 
     const products = productsRes.products;
@@ -28,8 +28,7 @@ export default async function Homepage() {
         <div className="bg-slate-50 min-h-screen font-sans">
             <main className="max-w-7xl mx-auto px-4 py-8 space-y-12">
 
-                {/* SECTION 1: HERO BANNER — giữ nguyên JSX y hệt bản gốc,
-            chỉ khác: heroProduct đã có sẵn dữ liệu ngay từ đầu, không còn null lúc mới vào trang */}
+                {/* SECTION 1: HERO BANNER */}
                 <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 rounded-md relative overflow-hidden h-[460px] bg-slate-900 text-white flex items-center px-12 shadow-sm group">
                         <div
@@ -52,7 +51,7 @@ export default async function Homepage() {
                             </a>
                         </div>
                     </div>
-                    {/* Banner phụ — copy nguyên JSX từ bản gốc dòng 121-161, dùng `categories[0]` như cũ */}
+                    {/* Banner phụ */}
                     <div className="flex flex-col gap-6">
                         <div className="group flex-1 rounded-md relative overflow-hidden p-6 text-white flex items-center bg-[#1e293b]">
                             <div
@@ -87,8 +86,7 @@ export default async function Homepage() {
                     </div>
                 </section>
 
-                {/* SECTION 2.5: SẢN PHẨM MỚI — không còn cần check `newProducts.length > 0 &&`
-            kiểu "ẩn hiện" vì lúc render đã có sẵn dữ liệu thật rồi, không phải chờ loading */}
+                {/* SECTION 2.5: SẢN PHẨM MỚI  */}
                 {newProducts.length > 0 && (
                     <section className="space-y-6">
                         <div className="border-b border-slate-100 pb-3 flex justify-between items-end">

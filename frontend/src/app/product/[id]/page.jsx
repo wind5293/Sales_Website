@@ -7,12 +7,13 @@ import ProductReviews from '@/features/reviews/ProductReviews';
 import ProductCard from '@/components/ProductCard';
 import ProductGallery from '@/components/ProductGallery';
 import AddToCartButton from '@/components/AddToCartButton';
+import { getProduct, getRelatedProducts } from '@/lib/services/products';
 
 
 export async function generateMetadata({ params }) {
     const { id } = await params;
     try {
-        const product = await apiServer(`/api/products/${id}`);
+        const product = await getProduct(id);
         return {
             title: `${product.name} | electro.`,
             description: product.shortDescription || product.description?.slice(0, 160),
@@ -28,8 +29,8 @@ export default async function ProductDetailPage({ params }) {
 
     let product, relatedProducts;
     try {
-        product = await apiServer(`/api/products/${id}`);
-        const relatedRes = await apiServer(`/api/products/${id}/related?limit=8`);
+        product = await getProduct(id);
+        const relatedRes = await getRelatedProducts(id, { limit: 8 });
         relatedProducts = relatedRes.products;
     } catch {
         notFound();

@@ -1,170 +1,107 @@
-# Hướng dẫn chuyển đổi Frontend (Sales Website) từ CSR sang SSR với Next.js
+# Kế hoạch chuyển Next.js API routes từ "proxy FastAPI" sang "tự xử lý + gọi thẳng Firestore/Firebase Auth"
 
-## 1. Bức tranh tổng thể
+> Mục tiêu cuối: bỏ hẳn `backend/` (FastAPI), toàn bộ logic nghiệp vụ nằm trong `frontend/src/app/api`.
 
-- **Trước:** `frontend/` — Vite + React + react-router-dom + axios, gọi backend FastAPI qua proxy `/api`.
-- **Sau:** `frontend-next/` — Next.js (App Router), thay thế hoàn toàn `frontend/`.
-- **Backend FastAPI:** không đổi gì trong giai đoạn này.
-- **Admin:** vẫn nằm chung trong `frontend-next`, nhưng không cần SSR — chỉ "chuyển nhà" (copy code, sửa import), không cần viết lại cách fetch dữ liệu.
+---
 
-Nguyên tắc cốt lõi xuyên suốt cả dự án:
+## 0. Hiện trạng thực tế (đã soát mã nguồn)
 
-| Việc | Trước (localStorage / CSR) | Sau (cookie / SSR) |
+- Thư mục frontend thật là `frontend/`, nhưng `package.json` vẫn ghi `"name": "frontend-next"` — dấu vết chưa dọn sạch từ lần đổi tên trước (xem `CHANGE.md`).
+- **Không phải mọi `/api/*` đều có `route.js`.** Chỉ ~9 route có file proxy thật trong `src/app/api`:
+  - `auth/login`, `auth/logout`
+  - `cart`, `cart/item/[id]`
+  - `coupons/available`, `coupons/validate`
+  - `orders`, `orders/[id]`
+  - `products/[id]/reviews`
+  - `users/me`, `users/addresses`, `users/addresses/[id]`, `users/change-password`
+- Toàn bộ phần còn lại (**admin** — auth/products/orders/users/audit-logs, `products` list/search/filter/new/related, `wishlist`, `points`, `rating`, `coupons/admin`, `reviews` PATCH/DELETE, `orders/{id}/cancel`) **không có route.js**, đang chạy nhờ `next.config.mjs` → `rewrites().fallback` bắn thẳng sang FastAPI.
+- ⚠️ Hệ quả: khi bỏ FastAPI, rewrite fallback này sẽ chết theo → **toàn bộ endpoint đang "núp" phía sau nó sẽ 404** nếu không được port trước. Đây là phần dễ bị đánh giá thấp khối lượng công việc nhất.
+- 2 hệ auth độc lập, đúng như mô tả ban đầu:
+  - **User**: Firebase Auth REST API (`signInWithPassword`) → `idToken` → cookie `auth_token` (httpOnly)
+  - **Admin**: Firestore collection `admins` + `bcrypt` + JWT tự ký (`create_access_token`, HS256, secret `ADMIN_JWT_SECRET`) → cookie `admin_token` (httpOnly)
+- Frontend hiện có gói `firebase` (client SDK) trong `package.json` nhưng **không được import ở đâu cả** — dependency chết, không dùng được cho việc này. Cần **`firebase-admin`** (Node) — tương đương `firebase_admin` bên Python.
+
+---
+
+## 1. Kiểm kê đầy đủ endpoint cần port (từ backend FastAPI)
+
+| Nhóm | Endpoint | Trạng thái route.js |
 |---|---|---|
-| Lưu đăng nhập | `localStorage.setItem('auth_token', ...)` | cookie `httpOnly` set qua Route Handler |
-| Đọc trạng thái đăng nhập | `useEffect` đọc `localStorage` | Server Component gọi `getCurrentUser()` |
-| Lấy dữ liệu trang | `axios` trong `useEffect` sau khi trang hiện ra | `fetch` trong Server Component, trước khi trang hiện ra |
-| Điều hướng | `useNavigate`, `<Link to>` (react-router-dom) | `useRouter`, `<Link href>` (next/navigation, next/link) |
-| Bảo vệ route cần đăng nhập | check trong component, hiện spinner rồi redirect | `middleware.js` chặn từ server |
+| Auth user | `POST /api/auth/login`, `POST /api/auth/signup` | login: có (đang gộp cả fallback admin) · signup: **chưa** |
+| Auth admin | `POST /api/admin/login`, `GET /api/admin/me`, `POST /api/admin/logout` | **chưa** |
+| Cart | `GET/POST /api/cart`, `PATCH/DELETE /api/cart/item/{id}` | có |
+| Orders | `GET/POST /api/orders`, `GET /api/orders/{id}`, `PATCH /api/orders/{id}/cancel` | có (thiếu `cancel`) |
+| Products | list, `/category/all`, `/search`, `/filter`, `/new`, `/{id}/related`, `/{id}` | **chưa** |
+| Reviews | `POST/GET /api/products/{id}/reviews`, `GET /api/products/{id}/rating`, `PATCH/DELETE /api/reviews/{id}` | 1 phần |
+| Users | `GET/PATCH /api/users/me`, `POST /api/users/change-password`, `/api/users/addresses` (CRUD) | có |
+| Coupons | `POST /validate`, `GET /available`, `POST/GET/PATCH/DELETE /admin` | 1 phần (thiếu CRUD admin) |
+| Points | `GET /api/points`, `POST /api/redeem-points`, `GET /api/points-history` | **chưa** |
+| Wishlist | `GET/POST/DELETE /api/wishlist/items` | **chưa** |
+| Admin | products/orders/users CRUD + `/admin/audit-logs` | **chưa — toàn bộ** |
+
+→ Tổng cộng khoảng **~40 endpoint**, không phải 9 như số route.js hiện có.
 
 ---
 
-## 2. Đã hoàn thành ✅
+## 2. Hạ tầng nền tảng — PHẢI làm trước khi port từng route
 
-- [x] Tạo project `frontend-next` (JS, Tailwind, App Router, có `src/`)
-- [x] Cài `axios`, `firebase`
-- [x] `next.config.mjs` — rewrites `/api/*` → backend (thay proxy Vite cũ)
-- [x] `.env.local` — chứa `BACKEND_URL`
-- [x] `src/lib/auth.server.js` — `getCurrentUser()`, `getIsAdmin()`, `getAuthHeader()` (thêm sau, dùng để gắn `Authorization: Bearer ...` khi Server Component / Route Handler cần gọi `apiServer()` hoặc `fetch()` tới endpoint yêu cầu đăng nhập)
-- [x] `src/app/api/auth/login/route.js` — set cookie khi đăng nhập
-- [x] `src/app/api/auth/logout/route.js` — xoá cookie khi đăng xuất
-- [x] `src/components/CartContext.jsx` → thêm `'use client'`
-- [x] `src/components/Footer.jsx` → đổi `Link` sang `next/link`
-- [x] `src/components/Navbar.jsx` → `'use client'`, `useRouter`, nhận `isAdmin` qua props
-- [x] `src/components/CartDrawner.jsx` → `'use client'`, `useRouter`
-- [x] `src/app/layout.jsx` → gọi `getCurrentUser()`/`getIsAdmin()`, truyền xuống Navbar
-- [x] `src/components/ProductCard.jsx` → `'use client'`
-- [x] `src/app/page.jsx` (Homepage) → Server Component fetch dữ liệu
-- [x] `src/components/ProductTabs.jsx` → Client Component chứa phần tab lọc
+Nếu bỏ qua bước này, sẽ phải viết lại logic auth/lỗi ở từng file → tốn công gấp đôi.
 
-## 3. Việc còn lại — theo thứ tự nên làm
+1. **`src/lib/firebaseAdmin.js`**
+   - Khởi tạo `firebase-admin` **một lần duy nhất** (singleton — kiểm tra `getApps().length` trước khi `initializeApp` để tránh lỗi "already initialized" khi Next.js hot-reload).
+   - Export `dbAdmin` (Firestore) và `authAdmin` (Firebase Auth).
+   - Copy `firebase-key.json` sang phía Next, **chỉ import trong code chạy server** (route.js), tuyệt đối không để lọt vào client bundle.
 
-> **Trạng thái hiện tại:** Nhóm A, B, C đã xong. Tiếp theo là **Nhóm D (Checkout)** rồi tới **Nhóm E (Admin)**.
+2. **`src/lib/session.js`** (thay thế `getAuthHeader()` cũ)
+   - `getVerifiedUser()`: đọc cookie `auth_token`, gọi `authAdmin.verifyIdToken()` trực tiếp — thay vì gắn Bearer rồi gọi sang FastAPI.
+   - `getVerifiedAdmin()`: đọc cookie `admin_token`, `jwt.verify()` bằng cùng secret + thuật toán HS256 — port y hệt logic `verify_admin_token` trong `app/core/security.py`.
+   - `requirePermission(permission)`: bản Node của `require_permission()` — kiểm tra `role === "superadmin"` hoặc `permissions.includes(permission)`.
 
-### Nhóm A — Auth (đã xong)
-- [x] `Signup.jsx` → gộp 1 file `src/app/signup/page.jsx` (không cần Route Handler riêng vì không set cookie)
+3. **Helper chuẩn hoá lỗi** — luôn trả `{ detail: "..." }` với message tiếng Việt giống hệt bản cũ. Frontend hiện đang parse cứng theo field `detail`, đổi format sẽ vỡ UI hàng loạt.
 
-### Nhóm B — Trang public, cần SSR để SEO
-- [x] `ProductDetail.jsx` → `src/app/product/[id]/page.jsx` + `ProductGallery.jsx` + `AddToCartButton.jsx` (Client) + `not-found.jsx`
-- [x] Reviews (`ProductReviews`, `ReviewCard`, `WriteReviewModal`) → `'use client'` + Route Handler `src/app/api/products/[id]/reviews/route.js`
-- [x] Cart (`CartContext`) → bỏ localStorage, dùng Route Handler `src/app/api/cart/route.js` + `src/app/api/cart/item/[id]/route.js`
-- [x] Sửa `next.config.mjs` — rewrites dùng cấu trúc `{ beforeFiles, afterFiles, fallback }`, đặt trong `fallback` để không "cướp" route động
-- [x] `SearchPage.jsx` → `src/app/search/page.jsx`. Đọc query `?q=` và `?category=` qua `searchParams` (Next.js truyền sẵn vào Server Component, không cần `useSearchParams` như React Router)
-- [x] `CategoryPage.jsx` → hiện tại chỉ redirect sang `/search?category=...`, xử lý bằng cách redirect ngay trong Server Component (`redirect()` từ `next/navigation`), không cần tạo component riêng
+4. **Cài npm packages tương đương:**
+   - `firebase-admin` (thay `firebase_admin`)
+   - `bcryptjs` hoặc `bcrypt` (thay `bcrypt` Python — dùng để hash/verify password admin)
+   - `jsonwebtoken` (thay `python-jose` — sign/verify JWT admin)
 
-### Nhóm C — Trang cần đăng nhập (bảo vệ bằng middleware) — ĐÃ XONG ✅
-- [x] Tạo `src/middleware.js` chặn `/profile/*`, `/orders/*`, `/checkout`, `/admin/*` nếu thiếu cookie
-- [x] `Profile.jsx` → `src/app/profile/page.jsx`
-- [x] `AddressBook.jsx` → `src/app/profile/addresses/page.jsx` + `src/app/api/users/addresses/route.js` + `src/app/api/users/addresses/[id]/route.js`
-- [x] `ChangePassword.jsx` → `src/app/profile/change-password/page.jsx` + `src/app/api/users/change-password/route.js`
-- [x] `Orders.jsx` → `src/app/orders/page.jsx` (Server, fetch trang đầu) + `src/features/orders/OrdersClient.jsx` (Client, tab/phân trang) + `src/app/api/orders/route.js` + `src/app/api/orders/[id]/route.js`
-  - Các file phụ trong `src/features/orders/`: `OrderCard.jsx`, `OrderComponents.jsx`, `OrderDetail.jsx`, `orderConstants.js`, `useOrders.js`
-  - ⚠️ Đã sửa 1 bug có sẵn từ bản CSR: `TABS` dùng key `"shipped"` nhưng `STATUS_CONFIG` dùng key `"shipping"` → đã đồng bộ về `"shipping"`. Kiểm tra lại giá trị status thật mà backend trả về nếu tab "Đang giao" hiển thị sai.
-  - Link "Chi tiết đầy đủ" trong `OrderDetail.jsx` trỏ tới `/orders/[id]` — **trang này chưa tồn tại**, cần làm nếu muốn xem chi tiết 1 đơn hàng riêng lẻ (chưa nằm trong checklist gốc, cân nhắc thêm vào Nhóm D hoặc làm riêng).
+5. **Copy các hằng số & logic nghiệp vụ nằm ở `core/`, không nằm trong route** — nhóm này dễ bị sót nhất:
+   - `app/core/config.py`: `SHIPPING_PRICES`, `VOUCHERS` (tạm thời còn hard-code, sau này mới chuyển sang collection `vouchers`)
+   - `app/core/constants.py`
+   - `app/core/inventory.py`: logic trừ/hoàn kho khi đặt/hủy đơn
+   - `app/core/audit.py`: logic ghi audit log cho hành động admin
 
-### Nhóm D — Phức tạp nhất, làm sau cùng
-- [x] `CheckoutPage.jsx` → `src/app/checkout/page.jsx` (nhiều state, form, có thể giữ phần lớn là Client Component, chỉ SSR phần lấy thông tin giỏ hàng ban đầu)
-
-### Nhóm E — Admin (copy gần như nguyên, không cần SSR)
-- [x] `components/AdminRoute.jsx` → **xoá hẳn**, không cần nữa vì `middleware.js` đã chặn `/admin/*` bằng cookie `admin_token`
-- [x] `pages/admin/AdminDashboard.jsx` + `components/admin/AdminSidebar.jsx` → `src/app/admin/layout.jsx`
-  - Đổi từ mô hình "1 trang, switch section bằng state `active`" sang **route thật theo file-system** (`/admin`, `/admin/products`, `/admin/orders`...). `layout.jsx` giờ chỉ còn nhiệm vụ bọc `AdminSidebar` + `Toast` quanh `{children}`, không tự switch component nữa.
-  - `AdminSidebar.jsx`: bỏ prop `active`/`onNavigate`, tự dùng `usePathname()` để biết mục nào đang active; dùng `<Link href>` thay vì `<button onClick={onNavigate}>`.
-  - Toast không còn truyền qua props giữa các section — dùng chung 1 Context: `src/context/AdminToastContext.jsx` (file mới, export `useAdminToast()`). Mỗi trang con gọi `const toast = useAdminToast();` thay vì nhận `{ toast }` qua props.
-- [x] `pages/admin/admin_pages/Overview.jsx` → `src/app/admin/page.jsx` (đã chuyển xong, dùng `useAdminToast()`)
-- [x] `src/components/admin/AdminUI.jsx` → thêm `'use client'`, sửa import path, giữ nguyên nội dung (`Spinner`, `Toast`, `Badge`, `Pagination`)
-- [x] `src/utils/admin/helpers.js` → copy nguyên, không đổi (`fmt`, `fmtVND`, `fmtDate`, `STATUS_MAP`, `NAV`)
-- [x] `src/utils/admin/adminApi.js` → copy nguyên, không đổi (axios instance `withCredentials: true`, tự đọc cookie `admin_token` khi gọi `/api/admin/*` nhờ `next.config.mjs` rewrites)
-- [ ] `pages/admin/admin_pages/Products.jsx` → `src/app/admin/products/page.jsx`
-- [ ] `pages/admin/admin_pages/Users.jsx` → `src/app/admin/users/page.jsx`
-- [ ] `pages/admin/admin_pages/Orders.jsx` → `src/app/admin/orders/page.jsx`
-- [ ] `pages/admin/admin_pages/Coupons.jsx` → `src/app/admin/coupons/page.jsx`
-- [ ] `pages/admin/admin_pages/Analytics.jsx` → `src/app/admin/analytics/page.jsx`
-- [ ] `pages/admin/admin_pages/AuditLogs.jsx` → `src/app/admin/audit-logs/page.jsx`
-- Mỗi file trong nhóm này: chỉ thêm `'use client'` ở đầu, giữ nguyên phần còn lại
-
-### Cuối cùng
-- [ ] Xoá `frontend/` (Vite cũ)
-- [ ] Đổi tên `frontend-next/` → `frontend/`
-- [ ] Cập nhật script deploy/CI trỏ vào thư mục mới
+6. **Xoá dần rewrite fallback trong `next.config.mjs` theo từng nhóm route đã port xong** — để endpoint còn thiếu lộ ra bằng lỗi 404 ngay, thay vì âm thầm rơi về FastAPI (che giấu sai sót).
 
 ---
 
-## 3.5. Ghi chú / bài học từ Nhóm C (auth, orders, addresses)
+## 3. Thứ tự port đề xuất (rủi ro thấp → cao)
 
-- **Cấu trúc thư mục thật dùng `src/features/<domain>/`** (ví dụ `src/features/orders/`), không phải `src/components/<domain>/` — khi nhờ AI hoặc tự viết code mới, luôn chỉ rõ đường dẫn thật để tránh sai import `@/...`.
-- **`apiServer()` (trong `src/lib/api.server.js`) chỉ là `fetch` trần, không tự đọc cookie/gắn token.** Với endpoint public (Homepage, ProductDetail) không sao vì backend không cần auth. Với endpoint cần đăng nhập (orders, addresses, change-password...) bắt buộc phải tự lấy header trước bằng `getAuthHeader()` rồi truyền vào qua `options.headers` — không được quên bước này.
-- **Không có file `src/lib/apiProxy.js`** — dù có lúc nhắc tới, thực tế dự án chỉ dùng `getAuthHeader()` từ `auth.server.js`. Các Route Handler (`api/orders/route.js`, `api/users/addresses/route.js`...) tự đọc `res.text()` rồi `JSON.parse` (parse an toàn khi body rỗng, ví dụ response `204 No Content` của DELETE) thay vì gọi hàm dùng chung `safeJson`. Nếu sau này muốn dọn code sạch hơn, có thể cân nhắc tạo `apiProxy.js` thật để không lặp lại đoạn parse này ở từng route — nhưng hiện tại code đang chạy đúng theo cách viết trực tiếp từng file.
-- **Lỗi 500 không phải lúc nào cũng do Next.js.** Khi Route Handler trả JSON.parse lỗi kiểu `"Internal S..."`, nhiều khả năng backend FastAPI đang tự crash — cần xem log `uvicorn`, không chỉ debug phía Next.js.
-- **Firestore composite index:** endpoint `GET /api/orders` (backend, `orders.py`) filter theo nhiều field (`status`, `userId`) + sort (`createdAt`) cùng lúc, nên mỗi tổ hợp filter khác nhau (theo từng `status`, và cả trường hợp không filter status) cần 1 composite index riêng trong Firestore. Nếu sau này thêm tab/filter mới cho Orders (hoặc áp dụng pattern tương tự cho trang khác dùng Firestore), nhớ test từng tổ hợp filter một lần để trigger sớm các lỗi `FailedPrecondition: The query requires an index` và tạo index qua link Firebase Console mà log Python cung cấp.
-
-## 4. "Cheat sheet" — quy tắc áp dụng cho MỌI file khi chuyển
-
-Khi mở 1 file `.jsx` cũ bất kỳ để chuyển, kiểm tra lần lượt theo checklist này:
-
-1. **File có dùng `useState`, `useEffect`, `useRef`, hoặc bất kỳ hook nào không?**
-   → Có: thêm `'use client'` ở dòng đầu tiên.
-   → Không (chỉ nhận props, render JSX thuần): để nguyên, có thể làm Server Component.
-
-2. **File có `import { Link } from 'react-router-dom'`?**
-   → Đổi thành `import Link from 'next/link'` (không có `{ }`)
-   → Trong JSX: `<Link to="...">` → `<Link href="...">`
-
-3. **File có `useNavigate()`?**
-   → Đổi thành `import { useRouter } from 'next/navigation'` rồi `const router = useRouter();`
-   → Mọi chỗ `navigate('/path')` → `router.push('/path')`
-
-4. **File có `useParams()`?**
-   → Trong Next.js, Server Component nhận `params` trực tiếp qua props của hàm trang: `export default function Page({ params }) { const { id } = params; }`
-   → Nếu là Client Component thì dùng `import { useParams } from 'next/navigation'`
-
-5. **File có đọc `localStorage.getItem('auth_token' / 'user_data' / ...)`?**
-   → Đây là dấu hiệu cần dùng `getCurrentUser()` (nếu ở Server Component) hoặc nhận dữ liệu qua props (nếu ở Client Component) — không còn đọc `localStorage` trực tiếp nữa.
-
-6. **File có `axios.get('/api/...')` trong `useEffect` để lấy dữ liệu hiển thị ban đầu của trang?**
-   → Nếu là trang public (không cần đăng nhập): chuyển logic đó lên Server Component cha (`page.jsx`), dùng `apiServer()`, truyền dữ liệu xuống qua props.
-   → Nếu là hành động do người dùng bấm (thêm giỏ hàng, submit form): giữ nguyên `fetch`/`axios` ở Client Component, không cần chuyển.
-
-7. **File dùng `axiosAuth` (có gắn Bearer token)?**
-   → Ở Server Component: dùng `apiServer()` (đã tự đọc cookie, xem file `src/lib/auth.server.js`)
-   → Ở Client Component: gọi qua Route Handler nội bộ của Next.js (ví dụ `/api/cart`) — Route Handler đó tự đọc cookie rồi gắn `Authorization` khi gọi FastAPI, client không cần biết token.
+1. **Products (đọc, không auth)** — an toàn nhất, dùng để làm quen pattern Firestore Admin SDK trong route.js.
+2. **Reviews + rating** — đọc + ghi nhưng logic tương đối đơn giản.
+3. **Cart, Wishlist, Points** — cần `getVerifiedUser()`, CRUD Firestore mức vừa.
+4. **Coupons + Orders** — phức tạp nhất phía user: tính giá, áp voucher, trừ/hoàn kho (`inventory.py`), composite index Firestore.
+5. **Auth (login / signup / logout)** — port sau vì `login/route.js` hiện đang gánh cả 2 luồng user + admin, cần tách rõ ràng.
+6. **Admin (auth + toàn bộ CRUD + audit log)** — làm cuối cùng vì rủi ro bảo mật cao nhất, không còn FastAPI làm lớp chắn.
+7. Gỡ `rewrites()` fallback trong `next.config.mjs`, xoá hẳn `backend/`.
 
 ---
 
-## 5. Lỗi thường gặp — tra cứu nhanh
+## 4. Những điểm dễ vỡ trận — LƯU Ý riêng
 
-| Thông báo lỗi | Nguyên nhân | Cách sửa |
-|---|---|---|
-| `You're importing a module that depends on useState/useRef... into a Server Component` | Quên thêm `'use client'` | Thêm `'use client'` ở dòng đầu file |
-| `Module not found: Can't resolve 'react-router-dom'` | File còn `import ... from 'react-router-dom'` | Đổi theo mục 2, 3, 4 ở Cheat sheet |
-| `ReferenceError: Link is not defined` | Xoá dòng import cũ nhưng quên thêm `import Link from 'next/link'` | Thêm đúng dòng import mới |
-| `Unexpected token '<', "<!DOCTYPE"` khi gọi `/api/...` | Thiếu `rewrites` trong `next.config.mjs`, hoặc quên restart sau khi thêm | Kiểm tra `next.config.mjs`, restart `npm run dev` |
-| `Unexpected token 'I', "Internal S"` khi gọi `/api/...` | Backend FastAPI chưa chạy, hoặc `.env.local` sai `BACKEND_URL` | Chạy `uvicorn main:app --reload` ở `backend/`, kiểm tra `http://127.0.0.1:8000/health` |
-| Trang cần đăng nhập không tự chuyển hướng khi thiếu cookie | Chưa tạo/chưa cập nhật `matcher` trong `src/middleware.js` | Thêm path vào `config.matcher` |
-| `Headers.append: "..." is an invalid header value` | Chuỗi trong dấu backtick bị xuống dòng thật giữa chừng (do copy/dán bị wrap) | Đảm bảo mỗi `headers.append(...)` nằm gọn 1 dòng, không Enter giữa chừng |
-| 401 với response `{"detail":"Not authenticated"}` (không phải câu chữ tự viết) | Request bị `rewrites` "cướp" trước khi tới được `route.js` — do (a) rewrites dạng mảng đơn giản nằm trước route động `[id]` trong thứ tự xử lý, hoặc (b) tên thư mục trong `api/` viết sai/thiếu chữ so với path thật của backend | (a) Đổi `rewrites()` sang dạng `{ beforeFiles: [], afterFiles: [], fallback: [...] }`, đặt rewrites `/api/:path*` vào `fallback`. (b) Kiểm tra lại chính xác từng chữ trong tên thư mục `api/...` khớp với path backend (số ít/số nhiều, viết hoa/thường) |
-| 401 với response đúng câu chữ tự viết (`"Token hết hạn..."`, `"Vui lòng đăng nhập"`) | `route.js` chạy đúng, nhưng cookie thiếu hoặc token Firebase đã hết hạn (idToken chỉ sống 1 giờ, không phụ thuộc Max-Age của cookie) | Đăng xuất/đăng nhập lại để lấy token mới; test lại ngay sau khi đăng nhập |
-| Thêm giỏ hàng/viết đánh giá luôn báo "cần đăng nhập" dù đã đăng nhập | Component (CartContext...) vẫn tự đọc `localStorage.getItem('auth_token')` — giá trị luôn `null` vì token giờ là cookie `httpOnly` | Bỏ hẳn logic đọc `localStorage`, gọi thẳng `fetch('/api/...')` không kèm token — để trình duyệt tự gửi cookie, Route Handler phía server tự đọc và gắn `Authorization` |
+- **Đăng nhập bằng mật khẩu KHÔNG dùng được `firebase-admin`.** Admin SDK không xác thực password. Vẫn phải `fetch` thẳng tới Identity Toolkit REST API (`identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=...`) từ route.js, y như FastAPI đang làm — chỉ là gọi trực tiếp, bỏ bước trung gian qua FastAPI.
+- **Firestore composite index**: `orders.py` filter nhiều field (`status`, `userId`) + sort (`createdAt`) cùng lúc. Mỗi tổ hợp filter mới khi port sang Node SDK vẫn cần tạo index thủ công trên Firebase Console — lỗi sẽ là `FAILED_PRECONDITION` kèm link tạo index, cứ theo link mà tạo.
+- **Cookie `admin_token` / `auth_token` là httpOnly** — middleware (`src/middleware.js`) đọc được vì chạy server-side, nhưng không được đọc từ client JS. Đừng nhầm lẫn khi debug.
+- **Giữ nguyên format response/lỗi** (`{ detail }`, message tiếng Việt, status code) — vì các trang admin (`adminApi.js` axios interceptor bắt 401 → redirect `/login`) và các trang user đều đang parse cứng theo cấu trúc cũ.
+- **`getAuthHeader()` cũ chỉ là fetch trần, không tự đọc cookie** — khi port, thay hoàn toàn bằng `getVerifiedUser()`/`getVerifiedAdmin()` mới, đừng giữ song song 2 kiểu gây nhầm lẫn.
+- **Bug đã biết từ lần migrate trước** (ghi trong `CHANGE.md`): `OrdersClient` từng lệch key `"shipped"` vs `"shipping"` giữa `TABS` và `STATUS_CONFIG` — đã fix, nhưng cần double-check lại khi đụng vào `orders` để không tái diễn.
+- Với mỗi route port xong: **test cả 2 trường hợp thành công và lỗi** (401 chưa đăng nhập, 404 không tồn tại, 400 validate sai) — vì hiện tại các trang FE đang phụ thuộc khá nhiều vào message lỗi cụ thể để hiển thị toast.
 
 ---
 
-## 6. Lệnh hay dùng trong quá trình migrate
+## 5. Việc cuối cùng sau khi port hết
 
-```bash
-# Chạy backend (terminal 1)
-cd Sales_Website/backend
-uvicorn main:app --reload
-
-# Chạy frontend Next.js (terminal 2)
-cd Sales_Website/frontend-next
-npm run dev
-
-# Sau khi sửa next.config.mjs hoặc .env.local — luôn restart:
-# Ctrl+C rồi chạy lại npm run dev
-```
-
----
-
-## 7. Nguyên tắc chốt cần nhớ khi tự làm các trang còn lại
-
-> Với mỗi trang: **tách phần "lấy dữ liệu ban đầu"** (đưa lên Server Component, file `page.jsx`) **ra khỏi phần "có tương tác"** (đưa xuống 1 Client Component riêng, nhận dữ liệu qua props). Đây là khuôn mẫu áp dụng được cho gần như mọi trang còn lại (`SearchPage`, `ProductDetail`, `Profile`, `Orders`...), giống hệt cách đã làm với `Homepage` → `ProductTabs`.
+- [ ] Xoá `rewrites()` fallback trong `next.config.mjs`
+- [ ] Xoá thư mục `backend/` (FastAPI, `firebase-key.json` cũ, `requirements.txt`)
+- [ ] Gỡ biến môi trường `BACKEND_URL` không còn dùng
+- [ ] Dọn dependency chết: gói `firebase` (client SDK) nếu vẫn không được dùng ở đâu
+- [ ] Cập nhật lại `README.md` (đang mô tả sai — vẫn ghi Vite/React Router thay vì Next.js đã dùng thực tế)

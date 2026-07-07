@@ -1,5 +1,6 @@
 import { apiServer } from '@/lib/api.server';
 import SearchResults from '@/features/search/SearchResults';
+import { searchProducts } from '@/lib/services/products';
 
 const LIMIT = 20;
 
@@ -15,14 +16,13 @@ export default async function SearchPage({ searchParams }) {
     // Giống hệt điều kiện trong code gốc: không có q và không có category -> không fetch
     if (query || categoryId) {
         try {
-            const params = new URLSearchParams();
-            if (query) params.set('q', query);
-            if (categoryId) params.set('categoryId', categoryId);
-            params.set('limit', LIMIT);
-            params.set('skip', 0);
-
             // Lần render đầu luôn dùng filter mặc định (chưa bật bộ lọc nâng cao nào)
-            const data = await apiServer(`/api/products/search?${params.toString()}`);
+            const data = await searchProducts({
+                q: query,
+                categoryId: categoryId || undefined,
+                limit: LIMIT,
+                skip: 0,
+            });
             initialProducts = data?.items || [];
             initialTotal = data?.total ?? initialProducts.length;
 
