@@ -1,32 +1,40 @@
 // src/app/api/cart/item/[id]/route.js
-import { cookies } from 'next/headers';
+import { dbAdmin } from '@/lib/firebaseAdmin';
+import { requireUser, getUid } from '@/lib/session';
+import { ApiError, withApiError } from '@/lib/apiError';
 
-async function getAuthHeader() {
-    const token = (await cookies()).get('auth_token')?.value;
-    return token ? { Authorization: `Bearer ${token}` } : null;
-}
-
-export async function PATCH(req, { params }) {
-    const { id } = await params;
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return Response.json({ detail: 'Vui lòng đăng nhập' }, { status: 401 });
+export const PATCH = withApiError(async (req, { params }) => {
+    const { id: cartItemId } = await params;
+    const decoded = await requireUser();
+    const uid = getUid(decoded);
 
     const body = await req.json();
-    const res = await fetch(`${process.env.BACKEND_URL}/api/cart/item/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
-}
+    const quantity = Number(body.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+        throw new ApiError(422, 'quantity không hợp lệ');
+    }
 
-export async function DELETE(req, { params }) {
-    const { id } = await params;
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return Response.json({ detail: 'Vui lòng đăng nhập' }, { status: 401 });
+    const itemRef = dbAdmin.collection('carts').doc(uid).collection('items').doc(cartItemId);
+    const doc = await itemRef.get();
+    if (!doc.exists) {
+        throw new ApiError(404, 'Sản phẩm không có trong giỏ hàng');
+    }
 
-    const res = await fetch(`${process.env.BACKEND_URL}/api/cart/item/${id}`, { method: 'DELETE', headers: authHeader });
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
-}
+    await itemRef.update({ quantity, updatedAt: new Date() });
+    return Response.json({ message: 'Đã cập nhật số lượng' });
+});
+
+export const DELETE = withApiError(async (req, { params }) => {
+    const { id: cartItemId } = await params;
+    const decoded = await requireUser();
+    const uid = getUid(decoded);
+
+    const itemRef = dbAdmin.collection('carts').doc(uid).collection('items').doc(cartItemId);
+    const doc = await itemRef.get();
+    if (!doc.exists) {
+        throw new ApiError(404, 'Sản phẩm không có trong giỏ hàng');
+    }
+
+    await itemRef.delete();
+    return Response.json({ message: 'Đã xóa sản phẩm khỏi giỏ hàng' });
+});
