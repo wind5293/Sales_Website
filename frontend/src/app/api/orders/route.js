@@ -4,6 +4,7 @@ import { requireUser, getUid } from '@/lib/session';
 import { ApiError, withApiError } from '@/lib/apiError';
 import { computeRank } from '@/lib/pointsHelpers';
 import { logPointsTransaction } from '@/lib/pointsHelpers';
+import { listOrders } from '@/lib/services/orders';
 import {
     SHIPPING_PRICES,
     serializeOrder,
@@ -22,28 +23,8 @@ export const GET = withApiError(async (req) => {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
     const skip = Math.max(parseInt(searchParams.get('skip') || '0', 10), 0);
 
-    // ⚠️ Cần composite index: userId (==) + createdAt (orderBy), và thêm
-    // status (==) + userId (==) + createdAt (orderBy) nếu có filter status.
-    // Firestore sẽ báo FAILED_PRECONDITION kèm link tạo index khi thiếu.
-    let query = dbAdmin
-        .collection('orders')
-        .where('userId', '==', uid)
-        .orderBy('createdAt', 'desc');
-
-    if (status) {
-        query = query.where('status', '==', status);
-    }
-
-    // Port đúng hành vi gốc: lấy toàn bộ để đếm total, rồi mới phân trang.
-    // (Không tối ưu ở quy mô lớn, nhưng giữ nguyên logic cũ — có thể cải thiện sau
-    // bằng cách lưu counter riêng nếu số đơn hàng tăng nhiều.)
-    const allSnap = await query.get();
-    const total = allSnap.size;
-
-    const paginatedSnap = await query.offset(skip).limit(limit).get();
-    const orders = paginatedSnap.docs.map(serializeOrder);
-
-    return Response.json({ orders, total });
+    const data = await listOrders(uid, { status, limit, skip });
+    return Response.json(data);
 });
 
 // POST /api/orders — tạo đơn hàng từ giỏ hàng hiện tại

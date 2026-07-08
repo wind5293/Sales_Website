@@ -1,4 +1,3 @@
-import { apiServer } from '@/lib/api.server';
 import SearchResults from '@/features/search/SearchResults';
 import { searchProducts } from '@/lib/services/products';
 

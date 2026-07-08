@@ -3,6 +3,7 @@ import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireUser, getUid } from '@/lib/session';
 import { ApiError, withApiError } from '@/lib/apiError';
 import { FieldValue } from 'firebase-admin/firestore';
+import { listAddresses } from '@/lib/services/users';
 
 async function clearDefaultAddresses(addressRef, excludeId = null) {
     const snap = await addressRef.get();
@@ -17,17 +18,8 @@ export const GET = withApiError(async () => {
     const decoded = await requireUser();
     const uid = getUid(decoded);
 
-    const snap = await dbAdmin.collection('users').doc(uid).collection('addresses').get();
-
-    let addresses = snap.docs.map((doc) => {
-        const { created_at, ...rest } = doc.data();
-        return rest;
-    });
-
-    // is_default = true lên đầu, giữ đúng thứ tự bản Python (sort key: not is_default)
-    addresses.sort((a, b) => (a.is_default === b.is_default ? 0 : a.is_default ? -1 : 1));
-
-    return Response.json({ addresses });
+    const data = await listAddresses(uid);
+    return Response.json(data);
 });
 
 export const POST = withApiError(async (req) => {

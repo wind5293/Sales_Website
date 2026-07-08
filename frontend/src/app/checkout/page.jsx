@@ -1,14 +1,14 @@
-import { getAuthHeader } from '@/lib/auth.server';
-import { apiServer } from '@/lib/api.server';
+import { getCurrentUser } from '@/lib/auth.server';
+import { listAddresses } from '@/lib/services/users';
 import CheckoutClient from '@/features/checkout/CheckoutClient';
 
 export default async function CheckoutPage() {
     let initialAddresses = [];
 
-    const authHeader = await getAuthHeader();
-    if (authHeader) {
+    const user = await getCurrentUser();
+    if (user?.id) {
         try {
-            const data = await apiServer('/api/users/addresses', { headers: authHeader });
+            const data = await listAddresses(user.id);
             initialAddresses = data?.addresses || [];
         } catch (err) {
             console.error('Không lấy được sổ địa chỉ ban đầu:', err);

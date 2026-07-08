@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiServer } from '@/lib/api.server';
 import { getCurrentUser } from '@/lib/auth.server';
 import { formatPrice } from '@/utils/format';
 import ProductReviews from '@/features/reviews/ProductReviews';
