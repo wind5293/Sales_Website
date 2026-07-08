@@ -9,7 +9,7 @@ import { ApiError } from './apiError';
 // ── Cấu hình admin JWT (tương ứng app/core/config.py) ─────────────────────────
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'change-this-secret-in-production';
 const ADMIN_JWT_ALGORITHM = 'HS256';
-const ADMIN_TOKEN_EXPIRE_HOURS = 2;
+export const ADMIN_TOKEN_EXPIRE_HOURS = 2;
 
 // ── Firebase user (Firebase Auth idToken) ─────────────────────────────────────
 

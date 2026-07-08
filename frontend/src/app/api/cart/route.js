@@ -9,13 +9,17 @@ export const GET = withApiError(async () => {
 
     const snap = await dbAdmin.collection('carts').doc(uid).collection('items').get();
 
+    const productDocs = await Promise.all(
+        snap.docs.map((doc) => dbAdmin.collection('products').doc(doc.data().productId).get())
+    );
+
     const items = [];
     let totalPrice = 0;
 
-    for (const doc of snap.docs) {
+    snap.docs.forEach((doc, i) => {
         const item = doc.data();
-        const productDoc = await dbAdmin.collection('products').doc(item.productId).get();
-        if (!productDoc.exists) continue;
+        const productDoc = productDocs[i];
+        if (!productDoc.exists) return;
 
         const product = productDoc.data();
         const price = product.price || 0;
@@ -32,7 +36,7 @@ export const GET = withApiError(async () => {
             status: product.status || 'active',
             quantity: qty,
         });
-    }
+    });
 
     return Response.json({ items, totalItems: items.length, totalPrice });
 });

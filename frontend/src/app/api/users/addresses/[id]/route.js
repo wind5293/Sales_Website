@@ -1,31 +1,62 @@
-import { cookies } from 'next/headers';
+// src/app/api/users/addresses/[id]/route.js
+import { dbAdmin } from '@/lib/firebaseAdmin';
+import { requireUser, getUid } from '@/lib/session';
+import { ApiError, withApiError } from '@/lib/apiError';
 
-async function getAuthHeader() {
-    const token = (await cookies()).get('auth_token')?.value;
-    return token ? { Authorization: `Bearer ${token}` } : null;
+const ADDRESS_UPDATABLE_FIELDS = ['name', 'street', 'city', 'district', 'zip_code', 'phone', 'is_default'];
+
+async function clearDefaultAddresses(addressRef, excludeId = null) {
+    const snap = await addressRef.get();
+    await Promise.all(
+        snap.docs
+            .filter((doc) => doc.id !== excludeId)
+            .map((doc) => doc.ref.update({ is_default: false }))
+    );
 }
 
-export async function PATCH(req, { params }) {
-    const { id } = await params;
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return Response.json({ detail: 'Chưa đăng nhập' }, { status: 401 });
-
+export const PATCH = withApiError(async (req, { params }) => {
+    const { id: addressId } = await params;
+    const decoded = await requireUser();
+    const uid = getUid(decoded);
     const body = await req.json();
-    const res = await fetch(`${process.env.BACKEND_URL}/api/users/addresses/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
-}
 
-export async function DELETE(req, { params }) {
-    const { id } = await params;
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return Response.json({ detail: 'Chưa đăng nhập' }, { status: 401 });
+    const addressRef = dbAdmin.collection('users').doc(uid).collection('addresses');
+    const docRef = addressRef.doc(addressId);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+        throw new ApiError(404, 'Không tìm thấy địa chỉ');
+    }
 
-    const res = await fetch(`${process.env.BACKEND_URL}/api/users/addresses/${id}`, { method: 'DELETE', headers: authHeader });
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
-}
+    const updates = {};
+    for (const field of ADDRESS_UPDATABLE_FIELDS) {
+        if (field in body) updates[field] = body[field];
+    }
+
+    if (updates.is_default === true) {
+        await clearDefaultAddresses(addressRef, addressId);
+    }
+
+    if (Object.keys(updates).length > 0) {
+        await docRef.update(updates);
+    }
+
+    const updatedDoc = await docRef.get();
+    const { created_at, ...updated } = updatedDoc.data();
+
+    return Response.json({ message: 'Cập nhật địa chỉ thành công', address: updated });
+});
+
+export const DELETE = withApiError(async (_req, { params }) => {
+    const { id: addressId } = await params;
+    const decoded = await requireUser();
+    const uid = getUid(decoded);
+
+    const ref = dbAdmin.collection('users').doc(uid).collection('addresses').doc(addressId);
+    const doc = await ref.get();
+    if (!doc.exists) {
+        throw new ApiError(404, 'Không tìm thấy địa chỉ');
+    }
+
+    await ref.delete();
+    return Response.json({ message: 'Xóa địa chỉ thành công' });
+});

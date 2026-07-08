@@ -1,6 +1,11 @@
 // src/app/api/auth/login/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { signInWithPassword } from '@/lib/session';
+import {
+    signInWithPassword,
+    verifyPassword,
+    createAccessToken,
+    ADMIN_TOKEN_EXPIRE_HOURS,
+} from '@/lib/session';
 import { ApiError, withApiError } from '@/lib/apiError';
 
 export const POST = withApiError(async (req) => {
@@ -13,13 +18,11 @@ export const POST = withApiError(async (req) => {
 
     let firebaseData;
     try {
-        // Gọi thẳng Firebase Identity Toolkit — không còn qua FastAPI.
         firebaseData = await signInWithPassword(email, password);
     } catch (userErr) {
-        const adminResponse = await tryAdminLoginFallback(email, password);
+        const adminResponse = await tryAdminLogin(email, password);
         if (adminResponse) return adminResponse;
 
-        // Cả hai đều thất bại → giữ nguyên lỗi gốc của nhánh user (đúng logic cũ)
         throw userErr;
     }
 
@@ -49,44 +52,49 @@ export const POST = withApiError(async (req) => {
     return res;
 });
 
-// ── Fallback tạm thời cho admin — sẽ gỡ bỏ khi port xong Admin auth ──────────
-async function tryAdminLoginFallback(email, password) {
-    if (!process.env.BACKEND_URL) return null;
+// ── Admin login (native — không còn gọi qua backend FastAPI) ────────────────
+async function tryAdminLogin(email, password) {
+    const snap = await dbAdmin
+        .collection('admins')
+        .where('email', '==', email)
+        .where('isActive', '==', true)
+        .limit(1)
+        .get();
 
-    let adminRes;
-    try {
-        adminRes = await fetch(`${process.env.BACKEND_URL}/api/admin/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-    } catch {
-        return null; // backend không phản hồi -> để lỗi user gốc quyết định
-    }
+    if (snap.empty) return null;
 
-    if (!adminRes.ok) return null;
+    const doc = snap.docs[0];
+    const admin = { id: doc.id, ...doc.data() };
 
-    const adminData = await adminRes.json();
-    const setCookieHeaders = typeof adminRes.headers.getSetCookie === 'function'
-        ? adminRes.headers.getSetCookie()
-        : [adminRes.headers.get('set-cookie')].filter(Boolean);
+    const passwordOk = await verifyPassword(password, admin.password_hash || '');
+    if (!passwordOk) return null;
 
-    const adminTokenCookie = setCookieHeaders.find((c) => c.startsWith('admin_token='));
-    const adminToken = adminTokenCookie ? adminTokenCookie.split(';')[0].split('=')[1] : null;
+    const token = createAccessToken({
+        sub: admin.id,
+        email: admin.email,
+        role: admin.role || 'admin',
+        permissions: admin.permissions || [],
+    });
 
-    if (!adminToken) {
-        console.error('[admin login fallback] Không tìm thấy admin_token trong Set-Cookie header từ backend');
-        return Response.json(
-            { detail: 'Đăng nhập quản trị thất bại (không nhận được token)' },
-            { status: 500 }
-        );
-    }
+    await dbAdmin.collection('admins').doc(admin.id).update({
+        lastLoginAt: new Date(),
+    });
+
+    const displayName = admin.name || admin.email;
+
+    const adminInfo = {
+        id: admin.id,
+        email: admin.email,
+        name: displayName,
+        role: admin.role || 'admin',
+        permissions: admin.permissions || [],
+    };
 
     const res = Response.json({
         message: '🛡️ Đăng nhập quản trị thành công! Đang chuyển hướng...',
-        username: adminData.admin_info.email,
+        username:displayName,
     });
-    setAdminCookie(res, adminToken, adminData.admin_info);
+    setAdminCookie(res, token, adminInfo);
     return res;
 }
 
@@ -108,13 +116,11 @@ function setAuthCookies(res, { token, userName, userData }) {
 }
 
 function setAdminCookie(res, token, adminInfo) {
-    // TODO: đối chiếu lại Max-Age với ACCESS_TOKEN_EXPIRE_HOURS thật trong
-    // app/core/config.py khi port Admin auth ở bước sau.
     const common =
-        'Path=/; SameSite=Lax; Max-Age=86400' +
+        `Path=/; SameSite=Lax; Max-Age=${ADMIN_TOKEN_EXPIRE_HOURS * 3600}` +
         (process.env.NODE_ENV === 'production' ? '; Secure' : '');
 
     res.headers.append('Set-Cookie', `admin_token=${token}; HttpOnly; ${common}`);
     res.headers.append('Set-Cookie', `admin_info=${encodeURIComponent(JSON.stringify(adminInfo))}; ${common}`);
-    res.headers.append('Set-Cookie', `user_name=${encodeURIComponent(adminInfo.email)}; ${common}`);
+    res.headers.append('Set-Cookie', `user_name=${encodeURIComponent(adminInfo.name)}; ${common}`);
 }

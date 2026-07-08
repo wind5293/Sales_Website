@@ -35,7 +35,7 @@ export async function getCurrentUser() {
         try {
             const adminInfo = JSON.parse(decodeURIComponent(adminInfoRaw));
             return {
-                name: adminInfo.email || 'Admin',
+                name: adminInfo.name || adminInfo.email || 'Admin',
                 id: adminInfo.id || null,
             };
         } catch {

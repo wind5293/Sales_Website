@@ -1,5 +1,7 @@
+import { withApiError } from "@/lib/apiError";
+
 // src/app/api/auth/logout/route.js
-export async function POST() {
+export const POST = withApiError(async () => {
     const res = Response.json({ message: 'Đã đăng xuất' });
     const expired = 'Path=/; Max-Age=0';
 
@@ -10,4 +12,4 @@ export async function POST() {
     res.headers.append('Set-Cookie', `admin_token=; HttpOnly; ${expired}`);
 
     return res;
-}
+})

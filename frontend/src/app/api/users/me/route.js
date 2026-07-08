@@ -1,29 +1,61 @@
-import { cookies } from 'next/headers';
+// src/app/api/users/me/route.js
+import { dbAdmin } from '@/lib/firebaseAdmin';
+import { requireUser, getUid } from '@/lib/session';
+import { ApiError, withApiError } from '@/lib/apiError';
 
-async function getAuthHeader() {
-    const token = (await cookies()).get('auth_token')?.value;
-    return token ? { Authorization: `Bearer ${token}` } : null;
+const PROFILE_UPDATABLE_FIELDS = ['name', 'dob', 'gender', 'place', 'tel'];
+
+function serializeUser(data, uid) {
+    return {
+        uid: data.uid || uid,
+        username: data.username || '',
+        email: data.email || '',
+        name: data.name || '',
+        dob: data.dob || '',
+        gender: data.gender || '',
+        place: data.place || '',
+        tel: data.tel || '',
+        points: data.points || 0,
+        rank: data.rank || 'Silver',
+    };
 }
 
-export async function GET() {
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return Response.json({ detail: 'Chưa đăng nhập' }, { status: 401 });
-
-    const res = await fetch(`${process.env.BACKEND_URL}/api/users/me`, { headers: authHeader });
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
+async function getUserOr404(uid) {
+    const doc = await dbAdmin.collection('users').doc(uid).get();
+    if (!doc.exists) {
+        throw new ApiError(404, 'Không tìm thấy thông tin user');
+    }
+    return doc.data();
 }
 
-export async function PATCH(req) {
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return Response.json({ detail: 'Chưa đăng nhập' }, { status: 401 });
+export const GET = withApiError(async () => {
+    const decoded = await requireUser();
+    const uid = getUid(decoded);
+
+    const data = await getUserOr404(uid);
+    return Response.json(serializeUser(data, uid));
+});
+
+export const PATCH = withApiError(async (req) => {
+    const decoded = await requireUser();
+    const uid = getUid(decoded);
+    await getUserOr404(uid);
 
     const body = await req.json();
-    const res = await fetch(`${process.env.BACKEND_URL}/api/users/me`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify(body),
+
+    // exclude_unset: chỉ nhận các field thực sự được gửi lên, đúng field cho phép sửa
+    const updates = {};
+    for (const field of PROFILE_UPDATABLE_FIELDS) {
+        if (field in body) updates[field] = body[field];
+    }
+
+    if (Object.keys(updates).length > 0) {
+        await dbAdmin.collection('users').doc(uid).update(updates);
+    }
+
+    const doc = await dbAdmin.collection('users').doc(uid).get();
+    return Response.json({
+        message: 'Cập nhật thông tin thành công',
+        user: serializeUser(doc.data(), uid),
     });
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
-}
+});
