@@ -62,9 +62,7 @@ npm run dev
 ```
 
 Sau khi chạy, truy cập:
-- Frontend: http://localhost:5173
-- Backend: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
+- Frontend: http://localhost:3000
 
 ## Trạng thái hiện tại
 
@@ -93,18 +91,3 @@ Sau khi chạy, truy cập:
 - SEO cho sản phẩm và danh mục
 - Tăng cường cá nhân hóa homepage
 - Tích hợp email thông báo và push notification
-
-## Lộ trình đề xuất
-
-1. Hoàn thiện trải nghiệm người dùng cao cấp
-2. Cải thiện admin và analytics
-3. Tăng cường personalization và recommendation
-4. Chuẩn hóa UI/UX cho gần với phong cách Apple
-5. Mở rộng cho deployment và production readiness
-
-## Tài liệu liên quan
-
-- [PROJECT.md](PROJECT.md)
-- [ARCHITECTURE.md](ARCHITECTURE.md)
-- [API.md](API.md)
-- [ISSUES_AND_GAPS.md](ISSUES_AND_GAPS.md)
