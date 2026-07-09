@@ -10,13 +10,22 @@ export default function AdminSidebar() {
     const router = useRouter();
 
     const adminInfo = (() => {
-        try { return JSON.parse(localStorage.getItem("admin_info") || "{}"); }
-        catch { return {}; }
+        if (typeof document === "undefined") 
+            return {};
+        const match = document.cookie.match(/(?:^|;\s*)admin_info=([^;]*)/);
+        if (!match) 
+            return {};
+        try { 
+            return JSON.parse(decodeURIComponent(match[1])); 
+        }
+        catch { 
+            return {}; 
+        }
     })();
 
     const handleLogout = async () => {
         try {
-            await adminApi.post("/api/admin/logout");
+            await adminApi.post("/api/auth/logout");
         } catch {
 
         } finally {
