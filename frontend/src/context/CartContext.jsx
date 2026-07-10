@@ -9,11 +9,13 @@ export const CartProvider = ({ children }) => {
     const [totalPrice, setTotalPrice] = useState(0);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const [lastAddedProductId, setLastAddedProductId] = useState(null);
 
     const resetCart = useCallback(() => {
         setItems([]);
         setTotalItems(0);
         setTotalPrice(0);
+        setLastAddedProductId(null); 
     }, []);
 
     // Lấy giỏ hàng từ server
@@ -48,6 +50,7 @@ export const CartProvider = ({ children }) => {
             const data = await res.json();
             if (!res.ok) return { success: false, message: data.detail || 'Không thể thêm vào giỏ hàng' };
             await fetchCart();
+            setLastAddedProductId(productId);
             setIsOpen(true);
             return { success: true };
         } catch {
@@ -100,6 +103,7 @@ export const CartProvider = ({ children }) => {
     return (
         <CartContext.Provider value={{
             items, totalItems, totalPrice, loading, isOpen,
+            lastAddedProductId,
             fetchCart, addToCart, updateQuantity, removeItem, clearCart,
             openCart, closeCart,
             resetCart,

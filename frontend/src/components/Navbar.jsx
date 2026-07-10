@@ -3,14 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 
-const CATEGORY_ICONS = {
-    'iPhone': 'fas fa-mobile-alt',
-    'iPad': 'fas fa-tablet-alt',
-    'MacBook': 'fas fa-laptop',
-    'Apple Watch': 'far fa-clock',
-    'AirPods': 'fas fa-headphones',
-};
-
 const USER_MENU_ITEMS = [
     { 
         id: 'profile', 

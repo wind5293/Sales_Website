@@ -2,12 +2,15 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
+import CartCrossSell from './CartCrossSell';
 
 const formatPrice = (price) => Number(price).toLocaleString('vi-VN') + 'đ';
 
 const CartDrawer = () => {
     const router = useRouter();
-    const { items, totalItems, totalPrice, loading, isOpen, closeCart, updateQuantity, removeItem } = useCart();
+    const { items, totalItems, totalPrice, loading, 
+            isOpen, closeCart, updateQuantity, removeItem, 
+            lastAddedProductId } = useCart();
 
     // Đóng drawer khi bấm Escape
     useEffect(() => {
@@ -82,79 +85,84 @@ const CartDrawer = () => {
                             <p className="text-sm text-slate-400 mb-6">Thêm sản phẩm vào giỏ để tiếp tục mua sắm</p>
                         </div>
                     ) : (
-                        /* Danh sách sản phẩm */
-                        <ul className="divide-y divide-slate-100 px-5">
-                            {items.map((item) => (
-                                <li key={item.cartItemId} className="py-4 flex gap-4">
-                                    {/* Ảnh sản phẩm */}
-                                    <div className="w-20 h-20 bg-slate-50 rounded-md border border-slate-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                                        {item.thumbnailUrl ? (
-                                            <img
-                                                src={item.thumbnailUrl}
-                                                alt={item.productName}
-                                                className="w-full h-full object-contain p-1"
-                                            />
-                                        ) : (
-                                            <i className="fas fa-image text-2xl text-slate-300"></i>
-                                        )}
-                                    </div>
+                        <>
+                            {/* Danh sách sản phẩm */}
+                            <ul className="divide-y divide-slate-100 px-5">
+                                {items.map((item) => (
+                                    <li key={item.cartItemId} className="py-4 flex gap-4">
+                                        {/* Ảnh sản phẩm */}
+                                        <div className="w-20 h-20 bg-slate-50 rounded-md border border-slate-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                            {item.thumbnailUrl ? (
+                                                <img
+                                                    src={item.thumbnailUrl}
+                                                    alt={item.productName}
+                                                    className="w-full h-full object-contain p-1"
+                                                />
+                                            ) : (
+                                                <i className="fas fa-image text-2xl text-slate-300"></i>
+                                            )}
+                                        </div>
 
-                                    {/* Thông tin */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">
-                                            {item.productName}
-                                        </p>
+                                        {/* Thông tin */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">
+                                                {item.productName}
+                                            </p>
 
-                                        {/* Badge hết hàng */}
-                                        {item.status === 'out_of_stock' && (
-                                            <span className="text-[10px] bg-red-100 text-red-500 font-semibold px-2 py-0.5 rounded mt-1 inline-block">
-                                                Hết hàng
-                                            </span>
-                                        )}
-                                        {item.status === 'unavailable' && (
-                                            <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2 py-0.5 rounded mt-1 inline-block">
-                                                Không còn bán
-                                            </span>
-                                        )}
-
-                                        <p className="text-[#c2410c] font-bold text-sm mt-1">
-                                            {formatPrice(item.price)}
-                                        </p>
-
-                                        {/* Điều chỉnh số lượng */}
-                                        <div className="flex items-center justify-between mt-2">
-                                            <div className="flex items-center border border-slate-200 rounded-md overflow-hidden">
-                                                <button
-                                                    onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                                                    className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors text-sm"
-                                                >
-                                                    <i className="fas fa-minus text-xs"></i>
-                                                </button>
-                                                <span className="w-8 text-center text-sm font-semibold text-slate-800">
-                                                    {item.quantity}
+                                            {/* Badge hết hàng */}
+                                            {item.status === 'out_of_stock' && (
+                                                <span className="text-[10px] bg-red-100 text-red-500 font-semibold px-2 py-0.5 rounded mt-1 inline-block">
+                                                    Hết hàng
                                                 </span>
+                                            )}
+                                            {item.status === 'unavailable' && (
+                                                <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2 py-0.5 rounded mt-1 inline-block">
+                                                    Không còn bán
+                                                </span>
+                                            )}
+
+                                            <p className="text-[#c2410c] font-bold text-sm mt-1">
+                                                {formatPrice(item.price)}
+                                            </p>
+
+                                            {/* Điều chỉnh số lượng */}
+                                            <div className="flex items-center justify-between mt-2">
+                                                <div className="flex items-center border border-slate-200 rounded-md overflow-hidden">
+                                                    <button
+                                                        onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+                                                        className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors text-sm"
+                                                    >
+                                                        <i className="fas fa-minus text-xs"></i>
+                                                    </button>
+                                                    <span className="w-8 text-center text-sm font-semibold text-slate-800">
+                                                        {item.quantity}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                                                        disabled={item.quantity >= item.stockQuantity}
+                                                        className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                                                    >
+                                                        <i className="fas fa-plus text-xs"></i>
+                                                    </button>
+                                                </div>
+
+                                                {/* Xóa */}
                                                 <button
-                                                    onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                                                    disabled={item.quantity >= item.stockQuantity}
-                                                    className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                                                    onClick={() => removeItem(item.cartItemId)}
+                                                    className="text-slate-300 hover:text-red-400 transition-colors p-1"
+                                                    title="Xóa khỏi giỏ"
                                                 >
-                                                    <i className="fas fa-plus text-xs"></i>
+                                                    <i className="fas fa-trash text-sm"></i>
                                                 </button>
                                             </div>
-
-                                            {/* Xóa */}
-                                            <button
-                                                onClick={() => removeItem(item.cartItemId)}
-                                                className="text-slate-300 hover:text-red-400 transition-colors p-1"
-                                                title="Xóa khỏi giỏ"
-                                            >
-                                                <i className="fas fa-trash text-sm"></i>
-                                            </button>
                                         </div>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            {/* Gợi ý mua kèm — dựa theo sản phẩm vừa thêm gần nhất */}
+                            <CartCrossSell productId={lastAddedProductId} />
+                        </>
                     )}
                 </div>
 
