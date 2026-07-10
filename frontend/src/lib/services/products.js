@@ -10,6 +10,37 @@ import { docToPlain } from '@/lib/firestoreSerialize';
 
 const docToProduct = docToPlain;
 
+//  --- Helpers ---------------------- 
+
+function normalizeModel(str) {
+    return (str || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function extractPhoneModelName(fullName) {
+    if (!fullName) return null;
+    let base = fullName.split('|')[0].trim();
+    base = base.replace(/\b\d+\s?(GB|TB|MB)\b/gi, '').trim();
+    return base;
+}
+
+function getAccessoryCompatibleModel(product) {
+    const spec = (product.specs || []).find(
+        (s) => s.name === 'Dùng được cho' || s.name === 'Dòng sản phẩm'
+    );
+    return spec ? normalizeModel(spec.value) : null;
+}
+
+function storageToGB(str) {
+    const match = String(str || '').match(/(\d+(?:\.\d+)?)\s*(GB|TB)/i);
+    if (!match) return Number.MAX_SAFE_INTEGER; // đẩy giá trị không đọc được xuống cuối
+    const value = parseFloat(match[1]);
+    return match[2].toUpperCase() === 'TB' ? value * 1024 : value;
+}
+
 /** GET /api/products */
 export async function listProducts({ categoryId, status = 'active', isFeatured, limit = 20 } = {}) {
     const cappedLimit = Math.min(limit, 100);
@@ -144,7 +175,7 @@ export async function getNewProducts({ limit = 8 } = {}) {
     return { products: snap.docs.map(docToProduct) };
 }
 
-/** GET /api/products/{id}/related — cùng categoryId, loại trừ sản phẩm hiện tại */
+/** GET /api/products/{id}/related — sản phẩm tương tự cùng categoryId, để so sánh trên trang chi tiết */
 export async function getRelatedProducts(productId, { limit = 8 } = {}) {
     const cappedLimit = Math.min(limit, 20);
 
@@ -153,10 +184,13 @@ export async function getRelatedProducts(productId, { limit = 8 } = {}) {
         throw new ApiError(404, 'Sản phẩm không tồn tại');
     }
 
-    const categoryId = doc.data().categoryId;
-    if (!categoryId) return { products: [] };
+    const productData = doc.data();
+    const categoryId = productData.categoryId;
 
-    // lấy dư 1 để bù cho việc loại sản phẩm hiện tại, giống bản FastAPI
+    if (!categoryId) {
+        return { products: [] };
+    }
+
     const snap = await dbAdmin
         .collection('products')
         .where('categoryId', '==', categoryId)
@@ -170,6 +204,140 @@ export async function getRelatedProducts(productId, { limit = 8 } = {}) {
         .slice(0, cappedLimit);
 
     return { products };
+}
+
+/** GET /api/products/{id}/related — cùng categoryId, loại trừ sản phẩm hiện tại */
+export async function getCrossSellSuggestions(productId, { limit = 8 } = {}) {
+    const cappedLimit = Math.min(limit, 20);
+
+    const doc = await dbAdmin.collection('products').doc(productId).get();
+    if (!doc.exists) {
+        throw new ApiError(404, 'Sản phẩm không tồn tại');
+    }
+
+    const productData = doc.data();
+    const categorySlug = productData.categorySlug;
+
+    if (!categorySlug) {
+        return { products: [] };
+    }
+
+    const ruleDoc = await dbAdmin.collection('cross_sell_rules').doc(categorySlug).get();
+    const ruleData = ruleDoc.exists ? ruleDoc.data() : null;
+    const suggested = ruleData?.suggested || [];
+
+    if (suggested.length === 0) {
+        return { products: [] };
+    }
+
+    const sortedSuggested = [...suggested].sort((a, b) => a.priority - b.priority);
+    // Firestore 'in' giới hạn 10 giá trị
+    const suggestedSlugs = sortedSuggested.map((s) => s.slug).slice(0, 10);
+
+    const snap = await dbAdmin
+        .collection('products')
+        .where('categorySlug', 'in', suggestedSlugs)
+        .where('status', '==', 'active')
+        .limit(500) // lấy rộng để có đủ dữ liệu chia slot, giới hạn thật ở bước sort/slice
+        .get();
+
+    const allMatched = snap.docs
+        .map(docToProduct)
+        .filter((p) => p.id !== productId);
+
+    const applyPriceFilter = ruleData?.applyPriceFilter === true;
+    const sourcePrice = productData.price;
+
+    let filteredMatched = allMatched;
+    if (applyPriceFilter && sourcePrice != null) {
+        filteredMatched = allMatched.filter((p) => (p.price ?? 0) <= sourcePrice);
+    }
+
+    const sourceModel = normalizeModel(extractPhoneModelName(productData.name));
+    const modelMatchSlugs = new Set(
+        sortedSuggested.filter((s) => s.requireModelMatch).map((s) => s.slug)
+    );
+
+    if (modelMatchSlugs.size > 0 && sourceModel) {
+        filteredMatched = filteredMatched.filter((p) => {
+            if (!modelMatchSlugs.has(p.categorySlug)) return true;
+            const accModel = getAccessoryCompatibleModel(p);
+            if (!accModel) return true;
+            return accModel === sourceModel;
+        });
+    }
+
+    // Gom sản phẩm theo từng category slug, giữ nguyên thứ tự ưu tiên (vd: featured trước)
+    const bySlug = new Map(suggestedSlugs.map((slug) => [slug, []]));
+    filteredMatched.forEach((p) => {
+        const bucket = bySlug.get(p.categorySlug);
+        if (bucket) bucket.push(p);
+    });
+    bySlug.forEach((list, slug) => {
+        const requiresMatch = modelMatchSlugs.has(slug);
+        list.sort((a, b) => {
+            // Với slug cần match model: sản phẩm match rõ (tier 0) lên trước
+            // sản phẩm thiếu spec/không xác định được model (tier 1) xuống sau
+            if (requiresMatch && sourceModel) {
+                const tierA = getAccessoryCompatibleModel(a) === sourceModel ? 0 : 1;
+                const tierB = getAccessoryCompatibleModel(b) === sourceModel ? 0 : 1;
+                if (tierA !== tierB) return tierA - tierB;
+            }
+            return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+        });
+    });
+
+    // Chia đều slot cho từng category, phần dư ưu tiên cho category priority cao hơn
+    const numCategories = suggestedSlugs.length;
+    const baseSlots = Math.floor(cappedLimit / numCategories);
+    const extraSlots = cappedLimit % numCategories;
+
+    const slotsBySlug = new Map(
+        suggestedSlugs.map((slug, idx) => [slug, baseSlots + (idx < extraSlots ? 1 : 0)])
+    );
+
+    let products = [];
+    let leftover = 0;
+
+    // Vòng 1: lấy đúng slot đã chia cho mỗi category
+    suggestedSlugs.forEach((slug) => {
+        const want = slotsBySlug.get(slug);
+        const available = bySlug.get(slug) || [];
+        const taken = available.slice(0, want);
+        products.push(...taken);
+        if (taken.length < want) leftover += want - taken.length; // category thiếu hàng
+    });
+
+    // Vòng 2: nếu có category thiếu hàng, bù slot dư bằng sản phẩm còn lại
+    // của các category khác (ưu tiên priority cao trước), để vẫn cố gắng đủ limit
+    if (leftover > 0) {
+        for (const slug of suggestedSlugs) {
+            if (leftover <= 0) break;
+            const available = bySlug.get(slug) || [];
+            const already = slotsBySlug.get(slug);
+            const extra = available.slice(already, already + leftover);
+            products.push(...extra);
+            leftover -= extra.length;
+        }
+    }
+
+    products = products.slice(0, cappedLimit);
+
+    return { products };
+}
+
+/** GET /api/products/{id}/variants — các phiên bản dung lượng cùng dòng máy (cùng productGroupId) */
+export async function getProductGroupVariants(productGroupId) {
+    if (!productGroupId) return [];
+
+    const snap = await dbAdmin
+        .collection('products')
+        .where('productGroupId', '==', productGroupId)
+        .where('status', '==', 'active')
+        .get();
+
+    const variants = snap.docs.map(docToProduct);
+    return variants.sort((a, b) => storageToGB(a.storageGB) - storageToGB(b.storageGB));
 }
 
 /** GET /api/products/{id} */

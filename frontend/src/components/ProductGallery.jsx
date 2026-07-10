@@ -5,7 +5,7 @@ export default function ProductGallery({ images, productName }) {
     const [activeImage, setActiveImage] = useState(images[0] || null);
 
     return (
-        <div className="self-start sticky top-8">
+        <div className="self-start top-8">
             <div className="h-96 w-full flex items-center justify-center bg-slate-50 rounded-sm p-4 mb-4">
                 {activeImage
                     ? <img src={activeImage} alt={productName} className="max-h-full max-w-full object-contain" />

@@ -5,8 +5,9 @@ import { formatPrice } from '@/utils/format';
 import ProductReviews from '@/features/reviews/ProductReviews';
 import ProductCard from '@/components/ProductCard';
 import ProductGallery from '@/components/ProductGallery';
+import ProductVariantSelector from '@/components/ProductVariantSelector';
 import AddToCartButton from '@/components/AddToCartButton';
-import { getProduct, getRelatedProducts } from '@/lib/services/products';
+import { getProduct, getRelatedProducts, getProductGroupVariants } from '@/lib/services/products';
 
 
 export async function generateMetadata({ params }) {
@@ -26,11 +27,12 @@ export default async function ProductDetailPage({ params }) {
     const { id } = await params;
     const user = await getCurrentUser();
 
-    let product, relatedProducts;
+    let product, relatedProducts, variants;
     try {
         product = await getProduct(id);
         const relatedRes = await getRelatedProducts(id, { limit: 8 });
         relatedProducts = relatedRes.products;
+        variants = await getProductGroupVariants(product.productGroupId);
     } catch {
         notFound();
     }
@@ -53,9 +55,18 @@ export default async function ProductDetailPage({ params }) {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white p-6 lg:p-8 border border-slate-200">
+                    <div>
+                        {/* Đảo tương tác 1: đổi ảnh — Client Component riêng */}
+                        <ProductGallery images={gallery} productName={product.name} />
 
-                    {/* Đảo tương tác 1: đổi ảnh — Client Component riêng */}
-                    <ProductGallery images={gallery} productName={product.name} />
+                        {/* Đảo tương tác 3: chọn dung lượng / màu — Client Component riêng */}
+                        <ProductVariantSelector
+                            currentProductId={product.id}
+                            variants={variants}
+                            colors={product.colors}
+                            price={product.price}
+                        />
+                    </div>
 
                     <div>
                         <span className="text-sm text-slate-400 tracking-wider font-medium">{product.brand}</span>
@@ -81,8 +92,6 @@ export default async function ProductDetailPage({ params }) {
                                 </>
                             )}
                         </div>
-
-                        {product.shortDescription && <p className="text-sm text-slate-600 mb-6">{product.shortDescription}</p>}
 
                         <div className="text-sm text-slate-500 mb-6">
                             {isOutOfStock
@@ -122,12 +131,6 @@ export default async function ProductDetailPage({ params }) {
                     </div>
                 )}
 
-                <ProductReviews 
-                    productId={id} 
-                    currentUserId={user?.id || null}
-                    currentUserName={user?.name === 'Welcome' ? null : user?.name}
-                />
-
                 {relatedProducts.length > 0 && (
                     <div className="mt-8 space-y-6">
                         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -147,6 +150,12 @@ export default async function ProductDetailPage({ params }) {
                         </div>
                     </div>
                 )}
+
+                <ProductReviews 
+                    productId={id} 
+                    currentUserId={user?.id || null}
+                    currentUserName={user?.name === 'Welcome' ? null : user?.name}
+                />
             </div>
         </div>
     );
