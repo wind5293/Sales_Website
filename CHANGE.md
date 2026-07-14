@@ -1,4 +1,23 @@
-# Kế hoạch chuyển Next.js API routes từ "proxy FastAPI" sang "tự xử lý + gọi thẳng Firestore/Firebase Auth"
+# Changelog - Sales Website
+
+## Tổng hợp tiến độ hiện tại (10/07/2026)
+
+- Trạng thái chung: dự án đã chuyển sang kiến trúc Next.js 16 App Router, toàn bộ luồng nghiệp vụ chính chạy trực tiếp trên Next.js API Routes trong thư mục `frontend/src/app/api`.
+- Hoàn thành nổi bật:
+  - Hoàn thiện storefront cơ bản: trang chủ, danh mục, chi tiết sản phẩm, tìm kiếm/lọc, giỏ hàng, checkout, đơn hàng, wishlist, coupon, tích điểm/rank.
+  - Hoàn thiện hệ thống xác thực người dùng và quản trị: Firebase Auth cho user, Firestore + JWT/cookie cho admin.
+  - Hoàn thiện khu vực quản trị: CRUD sản phẩm, đơn hàng, người dùng và audit log.
+  - Đã loại bỏ phần phụ thuộc vào FastAPI proxy trong frontend và cấu hình dev đã chuyển sang `next dev --webpack` để tránh vấn đề Turbopack với Firebase Admin.
+- Đang tiếp tục / cần làm tiếp:
+  - Hoàn thiện upload ảnh sản phẩm qua Cloudinary.
+  - Xác minh route `users/addresses/from-order` và dọn các endpoint không còn dùng.
+  - Dọn thư mục `backend/` và các biến môi trường cũ như `BACKEND_URL`.
+  - Bổ sung test tự động, CI/CD và tích hợp cổng thanh toán thật nếu mở rộng sản phẩm.
+- Ghi chú: dự án hiện vẫn là một MVP thương mại điện tử khá đầy đủ về nghiệp vụ, nhưng chưa có test tự động và chưa có CI/CD/Containerization.
+
+---
+
+## Kế hoạch chuyển Next.js API routes từ "proxy FastAPI" sang "tự xử lý + gọi thẳng Firestore/Firebase Auth"
 
 > Mục tiêu cuối: bỏ hẳn thư mục `backend/` (FastAPI) và đưa toàn bộ logic nghiệp vụ vào `frontend/src/app/api`.
 >

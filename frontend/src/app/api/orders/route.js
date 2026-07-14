@@ -2,7 +2,6 @@
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireUser, getUid } from '@/lib/session';
 import { ApiError, withApiError } from '@/lib/apiError';
-import { computeRank } from '@/lib/pointsHelpers';
 import { logPointsTransaction } from '@/lib/pointsHelpers';
 import { listOrders } from '@/lib/services/orders';
 import {
@@ -87,6 +86,7 @@ export const POST = withApiError(async (req) => {
     }
 
     const finalTotal = Math.round((totalPrice + shippingFee - discountAmount) * 100) / 100;
+    const pointsEarned = Math.floor(finalTotal / 100_000);
 
     // 4. Tạo đơn hàng
     const now = new Date();
@@ -106,6 +106,9 @@ export const POST = withApiError(async (req) => {
         paymentMethod: body.paymentMethod || 'cod',
         status: 'pending',
         paymentStatus: 'unpaid',
+        pointsEarned,
+        pointsReversed: false,
+        pointsConfirmed: false,
         createdAt: now,
         updatedAt: now,
     };
@@ -129,25 +132,24 @@ export const POST = withApiError(async (req) => {
     await Promise.all(cartItems.map((item) => cartItemsCol.doc(item.id).delete()));
 
     // 7. Tích điểm
-    const pointsEarned = Math.floor(finalTotal / 100_000);
     if (pointsEarned > 0) {
         const userRef = dbAdmin.collection('users').doc(uid);
         const added = await dbAdmin.runTransaction(async (tx) => {
             const snap = await tx.get(userRef);
             if (!snap.exists) return null;
             const userData = snap.data();
-            const newPoints = (userData.points || 0) + pointsEarned;
-            const newRank = computeRank(newPoints);
-            tx.update(userRef, { points: newPoints, rank: newRank });
-            return { newPoints, newRank };
+            const newPending = (userData.pendingPoints || 0) + pointsEarned;
+            tx.update(userRef, { pendingPoints: newPending });
+            return { newPending };
         });
 
         if (added) {
             await logPointsTransaction(dbAdmin, {
                 userId: uid,
                 delta: pointsEarned,
-                reason: `Tích điểm từ đơn hàng ${orderId}`,
+                reason: `Tích điểm (chờ xác nhận) từ đơn hàng ${orderId}`,
                 orderId,
+                pointsType: 'pending',
             });
         }
     }

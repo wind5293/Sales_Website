@@ -27,6 +27,13 @@ export const PATCH = withApiError(async (req, { params }) => {
     // Hoàn lại tồn kho
     await restockOrderItems(order.items || []);
 
-    await ref.update({ status: 'cancelled', updatedAt: new Date() });
+    await reversePendingPoints(dbAdmin, {
+        userId: order.userId,
+        orderId,
+        pointsEarned: order.pointsEarned || 0,
+        alreadyReversed: order.pointsReversed === true,
+    });
+
+    await ref.update({ status: 'cancelled', pointsReversed: true, updatedAt: new Date() });
     return Response.json({ message: 'Đã huỷ đơn hàng' });
 });

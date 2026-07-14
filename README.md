@@ -2,8 +2,6 @@
 
 Một dự án thương mại điện tử mini dành cho đồ điện tử, xây dựng bằng **Next.js 16 (App Router)**. Toàn bộ backend (xác thực, giỏ hàng, đơn hàng, sản phẩm, đánh giá, coupon, quản trị...) được xử lý ngay trong **Next.js API Routes**, gọi thẳng tới **Firebase Authentication** và **Firestore**
 
-> ⚠️ Dự án từng được thiết kế với backend FastAPI riêng (xem `CHANGE.md` để biết lịch sử migration), nhưng tại thời điểm này **thư mục `backend/` đã không còn tồn tại** — toàn bộ logic đã được chuyển hết sang `frontend/src/app/api`. README này mô tả đúng kiến trúc hiện tại.
-
 ## Tổng quan
 
 Dự án mô phỏng một cửa hàng bán thiết bị điện tử với các tính năng cốt lõi của một storefront: hiển thị sản phẩm, tìm kiếm/lọc, giỏ hàng, đặt hàng, quản lý tài khoản, đánh giá sản phẩm và một khu quản trị (admin) cơ bản.

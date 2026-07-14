@@ -3,6 +3,7 @@ import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireAdmin } from '@/lib/session';
 import { logAdminAction } from '@/lib/audit';
 import { restockOrderItems } from '@/lib/orderHelpers';
+import { reversePendingPoints, confirmPendingPoints } from '@/lib/pointsHelpers';
 import { ApiError, withApiError } from '@/lib/apiError';
 
 const VALID_STATUSES = new Set(['pending', 'confirmed', 'shipping', 'delivered', 'cancelled']);
@@ -64,8 +65,24 @@ export const PATCH = withApiError(async (req, { params }) => {
             }
         }
 
+        if (body.status === 'delivered' && current.pointsConfirmed !== true) {
+            await confirmPendingPoints(dbAdmin, {
+                userId: current.userId,
+                orderId,
+                pointsEarned: current.pointsEarned || 0,
+                alreadyConfirmed: current.pointsConfirmed === true,
+            });
+            updates.pointsConfirmed = true;
+        }
+
         if (body.status === 'cancelled' && currentStatus !== 'cancelled' && currentStatus !== 'delivered') {
-            await restockOrderItems(current.items || []);
+            await reversePendingPoints(dbAdmin, {
+                userId: current.userId,
+                orderId,
+                pointsEarned: current.pointsEarned || 0,
+                alreadyReversed: current.pointsReversed === true,
+            });
+            updates.pointsReversed = true;
         }
     }
 
