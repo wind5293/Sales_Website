@@ -73,7 +73,7 @@ export async function verifyPassword(plain, hashed) {
     return bcrypt.compare(plain, hashed);
 }
 
-/** Tương đương create_access_token() — ký JWT admin, hết hạn sau 12 giờ. */
+/** Tương đương create_access_token() — ký JWT admin, hết hạn sau 2 giờ. */
 export function createAccessToken(payload) {
     return jwt.sign(payload, ADMIN_JWT_SECRET, {
         algorithm: ADMIN_JWT_ALGORITHM,
@@ -107,7 +107,7 @@ export async function requireAdmin() {
  */
 export function requirePermission(admin, permission) {
     const permissions = admin.permissions || [];
-    if (admin.role !== 'superadmin' && !permissions.includes(permission)) {
+    if (!permissions.includes(permission)) {
         throw new ApiError(403, `Bạn không có quyền: ${permission}`);
     }
     return admin;
@@ -125,7 +125,7 @@ const FIREBASE_SIGN_IN_URL =
 /**
  * Đăng nhập email/password qua Firebase Auth REST API.
  * Trả về { idToken, localId, email } khi thành công.
- * Throw ApiError(401/403/503) khi thất bại — message y hệt bản FastAPI.
+ * Throw ApiError(401/403/503) khi thất bại.
  */
 export async function signInWithPassword(email, password) {
     let resp;

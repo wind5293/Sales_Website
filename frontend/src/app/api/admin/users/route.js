@@ -1,6 +1,7 @@
 // src/app/api/admin/users/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireAdmin } from '@/lib/session';
+import { requireAdmin, requirePermission } from '@/lib/session';
+import { PERMISSIONS } from '@/lib/permissions';
 import { withApiError } from '@/lib/apiError';
 
 function serializeUser(doc) {
@@ -16,7 +17,8 @@ function serializeUser(doc) {
 }
 
 export const GET = withApiError(async (req) => {
-    await requireAdmin();
+    const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.USERS_VIEW);
 
     const { searchParams } = new URL(req.url);
     const skip = Number(searchParams.get('skip') || 0);

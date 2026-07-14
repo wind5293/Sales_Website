@@ -1,9 +1,10 @@
 // src/app/api/admin/products/[id]/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireAdmin } from '@/lib/session';
+import { requireAdmin, requirePermission } from '@/lib/session';
 import { logAdminAction } from '@/lib/audit';
 import { slugify } from '@/lib/slugify';
 import { ApiError, withApiError } from '@/lib/apiError';
+import { PERMISSIONS } from '@/lib/permissions';
 
 // ── Helpers (giống hệt route.js — cân nhắc tách ra lib/services/adminProducts.js
 //    nếu muốn dùng chung, nhưng để riêng cho rõ ràng theo từng file route) ──
@@ -35,7 +36,8 @@ async function getRefOr404(productId) {
 // ── GET /api/admin/products/{id} ────────────────────────────────────────────
 
 export const GET = withApiError(async (_req, { params }) => {
-    await requireAdmin();
+    const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.PRODUCTS_VIEW)
     const { id } = await params;
 
     const { doc } = await getRefOr404(id);
@@ -46,6 +48,7 @@ export const GET = withApiError(async (_req, { params }) => {
 
 export const PATCH = withApiError(async (req, { params }) => {
     const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.PRODUCTS_EDIT);
     const { id } = await params;
     const body = await req.json();
 
@@ -136,6 +139,7 @@ export const PATCH = withApiError(async (req, { params }) => {
 
 export const DELETE = withApiError(async (_req, { params }) => {
     const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.PRODUCTS_DELETE);
     const { id } = await params;
 
     const { ref, doc } = await getRefOr404(id);

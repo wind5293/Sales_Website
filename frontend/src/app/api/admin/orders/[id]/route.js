@@ -1,6 +1,7 @@
 // src/app/api/admin/orders/[id]/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireAdmin } from '@/lib/session';
+import { requireAdmin, requirePermission } from '@/lib/session';
+import { PERMISSIONS } from '@/lib/permissions';
 import { logAdminAction } from '@/lib/audit';
 import { restockOrderItems } from '@/lib/orderHelpers';
 import { reversePendingPoints, confirmPendingPoints } from '@/lib/pointsHelpers';
@@ -28,6 +29,8 @@ function serializeAdminOrder(doc) {
 
 export const PATCH = withApiError(async (req, { params }) => {
     const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.ORDERS_UPDATE)
+
     const { id: orderId } = await params;
     const body = await req.json();
 

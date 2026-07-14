@@ -3,6 +3,7 @@ import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireAdmin, requirePermission } from '@/lib/session';
 import { logAdminAction } from '@/lib/audit';
 import { ApiError, withApiError } from '@/lib/apiError';
+import { PERMISSIONS } from '@/lib/permissions';
 
 const VALID_RANKS = new Set(['Silver', 'Gold', 'Diamond']);
 
@@ -22,6 +23,7 @@ function serializeUser(doc) {
 
 export const PATCH = withApiError(async (req, { params }) => {
     const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.USERS_EDIT);
     const { id: userId } = await params;
     const body = await req.json();
 
@@ -66,11 +68,10 @@ export const PATCH = withApiError(async (req, { params }) => {
 });
 
 // ── DELETE /api/admin/users/{id} — xoá (ẩn danh) tài khoản ──────────────────
-// Yêu cầu quyền riêng "delete_users", khác PATCH/GET chỉ cần requireAdmin().
 
 export const DELETE = withApiError(async (_req, { params }) => {
     const admin = await requireAdmin();
-    requirePermission(admin, 'delete_users');
+    requirePermission(admin, PERMISSIONS.USERS_DELETE);
 
     const { id: userId } = await params;
     const userRef = dbAdmin.collection('users').doc(userId);

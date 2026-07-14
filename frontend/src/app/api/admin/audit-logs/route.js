@@ -1,6 +1,7 @@
 // src/app/api/admin/audit-logs/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireAdmin } from '@/lib/session';
+import { requireAdmin, requirePermission } from '@/lib/session';
+import { PERMISSIONS } from '@/lib/permissions';
 import { withApiError } from '@/lib/apiError';
 
 function serializeLog(doc) {
@@ -12,7 +13,8 @@ function serializeLog(doc) {
 // ── GET /api/admin/audit-logs — danh sách (phân trang + lọc) ────────────────
 
 export const GET = withApiError(async (req) => {
-    await requireAdmin();
+    const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.AUDIT_VIEW)
 
     const { searchParams } = new URL(req.url);
     const skip = Number(searchParams.get('skip') || 0);

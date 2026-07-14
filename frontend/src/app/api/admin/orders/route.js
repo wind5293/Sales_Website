@@ -1,6 +1,7 @@
 // src/app/api/admin/orders/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireAdmin } from '@/lib/session';
+import { requireAdmin, requirePermission } from '@/lib/session';
+import { PERMISSIONS } from '@/lib/permissions';
 import { ApiError, withApiError } from '@/lib/apiError';
 
 const VALID_STATUSES = new Set(['pending', 'confirmed', 'shipping', 'delivered', 'cancelled']);
@@ -25,7 +26,8 @@ function serializeAdminOrder(doc) {
 }
 
 export const GET = withApiError(async (req) => {
-    await requireAdmin();
+    const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.ORDERS_VIEW)
 
     const { searchParams } = new URL(req.url);
     const skip = Number(searchParams.get('skip') || 0);

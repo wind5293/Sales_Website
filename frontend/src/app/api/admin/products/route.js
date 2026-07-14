@@ -1,6 +1,7 @@
 // src/app/api/admin/products/route.js
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireAdmin } from '@/lib/session';
+import { requireAdmin, requirePermission } from '@/lib/session';
+import { PERMISSIONS } from '@/lib/permissions';
 import { logAdminAction } from '@/lib/audit';
 import { ApiError, withApiError } from '@/lib/apiError';
 import { slugify } from '@/lib/slugify'; // xem ghi chú bên dưới về vị trí hàm này
@@ -25,7 +26,8 @@ function serializeProduct(doc) {
 // ── GET /api/admin/products — danh sách (phân trang + lọc) ─────────────────
 
 export const GET = withApiError(async (req) => {
-    await requireAdmin();
+    const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.PRODUCTS_VIEW)
 
     const { searchParams } = new URL(req.url);
     const skip = Number(searchParams.get('skip') || 0);
@@ -90,6 +92,7 @@ export const GET = withApiError(async (req) => {
 
 export const POST = withApiError(async (req) => {
     const admin = await requireAdmin();
+    requirePermission(admin, PERMISSIONS.PRODUCTS_CREATE)
     const body = await req.json();
 
     if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
