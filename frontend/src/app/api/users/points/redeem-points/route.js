@@ -4,6 +4,8 @@ import { requireUser, getUid } from '@/lib/session';
 import { ApiError, withApiError } from '@/lib/apiError';
 import { computeRank, generateVoucherCode, POINTS_TO_VND } from '@/lib/pointsHelpers';
 
+const MAX_ACTIVE_REDEEM_VOUCHERS = 3;
+
 export const POST = withApiError(async (req) => {
     const decoded = await requireUser();
     const uid = getUid(decoded);
@@ -22,6 +24,21 @@ export const POST = withApiError(async (req) => {
         const userSnap = await tx.get(userRef);
         if (!userSnap.exists) {
             throw new ApiError(404, 'Không tìm thấy người dùng');
+        }
+
+        const activeVouchersSnap = await dbAdmin
+            .collection('coupons')
+            .where('userId', '==', uid)
+            .where('type', '==', 'points_redeem')
+            .where('isActive', '==', true)
+            .where('usedCount', '<', 1)
+            .get();
+
+        if (activeVouchersSnap.size >= MAX_ACTIVE_REDEEM_VOUCHERS) {
+            throw new ApiError(
+                400,
+                `Bạn đang giữ tối đa ${MAX_ACTIVE_REDEEM_VOUCHERS} voucher chưa dùng. Hãy dùng trước khi đổi thêm.`
+            );
         }
 
         const currentPoints = userSnap.data().points || 0;

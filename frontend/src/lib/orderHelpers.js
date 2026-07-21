@@ -26,6 +26,7 @@ function toDateSafe(value) {
 
 /** Hoàn lại usedCount khi tạo đơn thất bại sau khi đã tiêu thụ voucher. */
 export async function releaseVoucher(code) {
+    if (!code) return;
     const ref = dbAdmin.collection('coupons').doc(code.toUpperCase().trim());
     try {
         await dbAdmin.runTransaction(async (tx) => {

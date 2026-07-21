@@ -17,7 +17,6 @@ export default async function OrdersPage() {
             console.error('Không lấy được đơn hàng ban đầu:', err);
         }
     }
-    // Nếu chưa đăng nhập, middleware đã chặn /orders từ trước, đây chỉ là phòng hờ.
 
     return <OrdersClient initialOrders={initialOrders} initialTotal={initialTotal} />;
 }

@@ -1,23 +1,4 @@
-# Changelog - Sales Website
-
-## Tổng hợp tiến độ hiện tại (10/07/2026)
-
-- Trạng thái chung: dự án đã chuyển sang kiến trúc Next.js 16 App Router, toàn bộ luồng nghiệp vụ chính chạy trực tiếp trên Next.js API Routes trong thư mục `frontend/src/app/api`.
-- Hoàn thành nổi bật:
-  - Hoàn thiện storefront cơ bản: trang chủ, danh mục, chi tiết sản phẩm, tìm kiếm/lọc, giỏ hàng, checkout, đơn hàng, wishlist, coupon, tích điểm/rank.
-  - Hoàn thiện hệ thống xác thực người dùng và quản trị: Firebase Auth cho user, Firestore + JWT/cookie cho admin.
-  - Hoàn thiện khu vực quản trị: CRUD sản phẩm, đơn hàng, người dùng và audit log.
-  - Đã loại bỏ phần phụ thuộc vào FastAPI proxy trong frontend và cấu hình dev đã chuyển sang `next dev --webpack` để tránh vấn đề Turbopack với Firebase Admin.
-- Đang tiếp tục / cần làm tiếp:
-  - Hoàn thiện upload ảnh sản phẩm qua Cloudinary.
-  - Xác minh route `users/addresses/from-order` và dọn các endpoint không còn dùng.
-  - Dọn thư mục `backend/` và các biến môi trường cũ như `BACKEND_URL`.
-  - Bổ sung test tự động, CI/CD và tích hợp cổng thanh toán thật nếu mở rộng sản phẩm.
-- Ghi chú: dự án hiện vẫn là một MVP thương mại điện tử khá đầy đủ về nghiệp vụ, nhưng chưa có test tự động và chưa có CI/CD/Containerization.
-
----
-
-## Kế hoạch chuyển Next.js API routes từ "proxy FastAPI" sang "tự xử lý + gọi thẳng Firestore/Firebase Auth"
+# Kế hoạch chuyển Next.js API routes từ "proxy FastAPI" sang "tự xử lý + gọi thẳng Firestore/Firebase Auth"
 
 > Mục tiêu cuối: bỏ hẳn thư mục `backend/` (FastAPI) và đưa toàn bộ logic nghiệp vụ vào `frontend/src/app/api`.
 >
@@ -159,13 +140,52 @@
 - [ ] Xác minh & xử lý `users/addresses/from-order` (mục 6)
 - [x] Xoá `rewrites()` fallback trong `frontend/next.config.mjs` — **xong 08/07/2026**
 - [x] Xoá `frontend/src/lib/api.server.js` — **xong 08/07/2026**
-- [ ] Xoá toàn bộ thư mục `backend/` — **kế tiếp**
-- [ ] Gỡ biến môi trường `BACKEND_URL` không còn dùng (file `.env.local`, `.env`, hosting config nếu deploy)
-- [ ] Dọn dependency cũ không cần thiết (`frontend/src/lib/apiProxy.js` — kiểm tra còn route nào import không trước khi xoá)
-- [ ] Cập nhật lại `README.md` để phản ánh đúng kiến trúc Next.js hiện tại
+- [x] Xoá toàn bộ thư mục `backend/` — **kế tiếp**
+- [x] Gỡ biến môi trường `BACKEND_URL` không còn dùng (file `.env.local`, `.env`, hosting config nếu deploy)
+- [x] Dọn dependency cũ không cần thiết (`frontend/src/lib/apiProxy.js` — kiểm tra còn route nào import không trước khi xoá)
+- [x] Cập nhật lại `README.md` để phản ánh đúng kiến trúc Next.js hiện tại
 
 ---
 
 ## 9. Yêu cầu tiếp theo (đã ghi nhận, làm sau)
 
 - Người dùng muốn có 1 buổi tổng hợp để **hiểu toàn bộ luồng nghiệp vụ + kiến trúc code của dự án** (không chỉ riêng phần migration này). Việc này để sau, chưa làm ngay.
+
+---
+
+## 10. TODO — Rà soát nghiệp vụ & lỗ hổng (audit thủ công, ngoài phạm vi migration)
+
+> Phát hiện khi đọc kỹ luồng đơn hàng/điểm thưởng/coupon để chuẩn bị đánh giá đầu vào. Không liên quan tới việc port FastAPI → Next.js ở các mục trên — đây là rà soát đúng/sai về **nghiệp vụ**.
+
+### ✅ Đã sửa
+
+- [x] **Huỷ đơn hàng không hoàn điểm thưởng đã tích** — sửa xong, dùng phương án "khoá điểm chưa xác nhận":
+  - Thêm field `pendingPoints` (chờ xác nhận) tách khỏi `points` (khả dụng, dùng đổi voucher).
+  - Tạo đơn → cộng vào `pendingPoints` (không tiêu được ngay).
+  - Đơn chuyển `delivered` → `confirmPendingPoints()` chuyển `pendingPoints` → `points`, cập nhật rank.
+  - Đơn bị huỷ (user hoặc admin) → `reversePendingPoints()` trừ lại đúng `pendingPoints`, không cần clamp/nợ âm.
+  - File đã sửa: `lib/pointsHelpers.js`, `app/api/orders/route.js`, `app/api/orders/[id]/cancel/route.js`, `app/api/admin/orders/[id]/route.js`, `app/api/users/points/route.js`.
+  - Lý do đổi từ "cho điểm âm" sang "khoá điểm chưa xác nhận": nếu chỉ cho âm, user vẫn có thể tích điểm → đổi ngay lấy voucher (giá trị thật) → huỷ đơn → giữ voucher miễn phí, chỉ bị "nợ điểm" không thu hồi được giá trị đã phát hành. Khoá điểm chưa xác nhận chặn được tận gốc vì điểm chưa xác nhận **không thể đem đổi voucher** ngay từ đầu.
+  - Đã viết mock Firestore trong bộ nhớ (`frontend/scripts/mock-db.mjs`) để test logic `pointsHelpers.js` mà không cần Firebase thật (file này không import `firebase-admin`, nhận `dbAdmin` qua tham số → test được độc lập).
+
+### 🔲 Việc còn lại của bản vá điểm thưởng (không bắt buộc, nên làm)
+
+- [ ] Viết script test cấp độ 1 hoàn chỉnh (`frontend/scripts/test-points-flow.mjs`) dùng `mock-db.mjs`, cover: confirm flow, confirm idempotent (chống cộng lặp khi PATCH `delivered` 2 lần), cancel flow, mô phỏng lại kịch bản khai thác cũ để xác nhận không còn xảy ra.
+- [ ] Test cấp độ 2 (integration thật): dựng Firestore Emulator (`firebase init emulators`, cần Firebase CLI + Java, tải qua mạng — không chạy được trong sandbox hiện tại do giới hạn domain mạng) rồi gọi thẳng API `POST /api/orders` → `PATCH .../cancel` / `PATCH /api/admin/orders/{id}` để test end-to-end qua HTTP thật.
+- [ ] Cập nhật `frontend/src/app/profile/page.jsx` hiển thị thêm "Điểm đang chờ xác nhận: {pendingPoints}" (API `GET /api/users/points` đã trả sẵn field này).
+
+### 🔲 Lỗ hổng nghiệp vụ khác (chưa sửa, ưu tiên cao — nên làm tiếp theo)
+
+- [x] **Huỷ đơn hàng không hoàn lại lượt dùng voucher.** `applyVoucherWithFirestore()` tăng `usedCount` khi tạo đơn; `releaseVoucher()` chỉ được gọi ở nhánh rollback khi *tạo đơn lỗi*, không được gọi khi đơn bị huỷ sau đó (dù user hay admin huỷ) → voucher `maxUses` bị "mất" 1 lượt vĩnh viễn dù chưa từng được dùng thành công. **Đây là bug tiếp theo đã lên kế hoạch sửa, dùng chung pattern `pointsReversed`/`pointsConfirmed` đã áp dụng (thêm cờ `voucherReleased` vào đơn, gọi `releaseVoucher()` ở cả 2 route huỷ đơn).**
+- [ ] **`decrementStock()` clamp về 0 thay vì throw khi không đủ tồn kho** — race condition có thể dẫn tới overselling nếu 2 đơn cho cùng sản phẩm được tạo gần như đồng thời. Cần sửa để transaction throw lỗi rõ ràng khi tồn kho không đủ, để tầng gọi rollback đơn thay vì âm thầm bán vượt kho.
+- [x] **`PATCH /api/cart/item/[id]` không kiểm tra lại tồn kho** khi đổi số lượng trong giỏ (khác với `POST /api/cart` có kiểm tra) — user có thể set số lượng vượt tồn kho trong giỏ, chỉ bị chặn (nếu có) ở bước tạo đơn.
+- [x] **RBAC admin chưa áp dụng đồng bộ** — `requirePermission()` trong `lib/session.js` chỉ được dùng ở đúng 1 chỗ (`delete_users`). Mọi hành động admin nhạy cảm khác (sửa/xoá sản phẩm, đổi giá, đổi trạng thái đơn, đổi `paymentStatus`...) chỉ cần `requireAdmin()` — bất kỳ admin nào cũng toàn quyền bất kể field `permissions` trong Firestore.
+- [ ] **Không có cơ chế chống double-submit khi tạo đơn** (`POST /api/orders`) — bấm "Đặt hàng" 2 lần nhanh (double click, mất mạng rồi resend) có thể tạo 2 đơn, trừ kho 2 lần. Cần idempotency key (vd. gửi kèm 1 UUID từ frontend, lưu vào đơn, kiểm tra trùng trước khi tạo).
+- [x] **Voucher đổi từ điểm (`redeem-points`) không có hạn sử dụng** (`validUntil: null`) — vĩnh viễn không hết hạn, chưa giới hạn số coupon 1 user có thể giữ cùng lúc.
+
+### 🔲 Ý tưởng bổ sung nghiệp vụ (ưu tiên thấp hơn — làm sau khi hết lỗi ở trên)
+
+- [ ] **Order timeline & thông báo:** lưu `status_history` thay vì chỉ 1 field `status`; gửi email khi đổi trạng thái đơn; thêm trạng thái `returned`/`refund_requested` cho hàng đã giao.
+- [ ] **Giỏ hàng & khách vãng lai:** cho thêm giỏ hàng khi chưa đăng nhập (localStorage), merge khi login; nhắc "giỏ hàng bị bỏ quên".
+- [ ] **Return/Refund workflow:** API yêu cầu đổi/trả sau khi `delivered` (trong X ngày); restock khi admin duyệt return; xử lý liên đới với voucher/điểm nếu đơn gốc có dùng.
+- [ ] **Kiểm thử & vận hành:** viết test cho `POST /api/orders` (race condition tồn kho, huỷ đơn); thêm `.env.example`; rate-limit cho `/api/auth/login`, `/api/auth/signup`.

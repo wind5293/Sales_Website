@@ -20,6 +20,21 @@ export const PATCH = withApiError(async (req, { params }) => {
         throw new ApiError(404, 'Sản phẩm không có trong giỏ hàng');
     }
 
+    const { productId } = doc.data();
+    const productDoc = await dbAdmin.collection('products').doc(productId).get();
+    if (!productDoc.exists) {
+        throw new ApiError(400, 'Sản phẩm không tồn tại');
+    }
+
+    const product = productDoc.data();
+    if (product.status === 'out_of_stock' || product.status === 'hidden') {
+        throw new ApiError(400, `Sản phẩm '${product.name}' hiện không còn bán`);
+    }
+
+    if (quantity > (product.stockQuantity || 0)) {
+        throw new ApiError(400, `Sản phẩm '${product.name}' chỉ còn ${product.stockQuantity} cái`);
+    }
+
     await itemRef.update({ quantity, updatedAt: new Date() });
     return Response.json({ message: 'Đã cập nhật số lượng' });
 });

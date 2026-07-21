@@ -2,7 +2,7 @@
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireUser, getUid } from '@/lib/session';
 import { ApiError, withApiError } from '@/lib/apiError';
-import { restockOrderItems } from '@/lib/orderHelpers';
+import { restockOrderItems, releaseVoucher } from '@/lib/orderHelpers';
 
 export const PATCH = withApiError(async (req, { params }) => {
     const { id: orderId } = await params;
@@ -26,6 +26,9 @@ export const PATCH = withApiError(async (req, { params }) => {
 
     // Hoàn lại tồn kho
     await restockOrderItems(order.items || []);
+    if (order.voucherCode && order.voucherReleased !== true) {
+        await releaseVoucher(order.voucherCode);
+    }
 
     await reversePendingPoints(dbAdmin, {
         userId: order.userId,
@@ -34,6 +37,11 @@ export const PATCH = withApiError(async (req, { params }) => {
         alreadyReversed: order.pointsReversed === true,
     });
 
-    await ref.update({ status: 'cancelled', pointsReversed: true, updatedAt: new Date() });
+    await ref.update({ 
+        status: 'cancelled', 
+        pointsReversed: true, 
+        voucherReleased: true,
+        updatedAt: new Date() 
+    });
     return Response.json({ message: 'Đã huỷ đơn hàng' });
 });

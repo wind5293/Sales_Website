@@ -3,7 +3,7 @@ import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireAdmin, requirePermission } from '@/lib/session';
 import { PERMISSIONS } from '@/lib/permissions';
 import { logAdminAction } from '@/lib/audit';
-import { restockOrderItems } from '@/lib/orderHelpers';
+import { releaseVoucher, restockOrderItems } from '@/lib/orderHelpers';
 import { reversePendingPoints, confirmPendingPoints } from '@/lib/pointsHelpers';
 import { ApiError, withApiError } from '@/lib/apiError';
 
@@ -79,6 +79,8 @@ export const PATCH = withApiError(async (req, { params }) => {
         }
 
         if (body.status === 'cancelled' && currentStatus !== 'cancelled' && currentStatus !== 'delivered') {
+            await restockOrderItems(current.items || []);
+            
             await reversePendingPoints(dbAdmin, {
                 userId: current.userId,
                 orderId,
@@ -86,6 +88,11 @@ export const PATCH = withApiError(async (req, { params }) => {
                 alreadyReversed: current.pointsReversed === true,
             });
             updates.pointsReversed = true;
+
+            if (current.voucherCode && current.voucherReleased !== true) {
+                await releaseVoucher(current.voucherCode);
+            }
+            updates.voucherReleased = true;
         }
     }
 
